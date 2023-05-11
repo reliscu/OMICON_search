@@ -214,7 +214,6 @@ search_queries_table2 <- function(data_dirs, MONDO, UBERON){
     
     if(!is.na(data_dirs$FM_dir[i])){
     
-      DS_attr <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="DS_attributes", full.names=T)[1])
       sampleinfo <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="sample_attributes", full.names=T)[1])
       
       if(is.element("Developmental_Epoch", colnames(sampleinfo))){ 
@@ -229,7 +228,7 @@ search_queries_table2 <- function(data_dirs, MONDO, UBERON){
           networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
           networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
           
-          networks_list <- lapply(1:length(networks), function(j){
+          networks_list <- future_lapply(1:length(networks), function(j){
 
             enrich <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
             enrich_list <- lapply(enrich, covariation_enrich_search, setname="radial_glia")
@@ -241,7 +240,7 @@ search_queries_table2 <- function(data_dirs, MONDO, UBERON){
                                 DS_Attr=DS_attr))
             }
             
-          })
+          }, future.seed=T)
           modules <- do.call(rbind, networks_list)
           
           if(nrow(modules)>0){
@@ -270,7 +269,7 @@ search_queries_table2 <- function(data_dirs, MONDO, UBERON){
                 
               } else {
                 
-                kME <- map2Any(features=kME, unique_id, map_to=feature_type, 
+                kME <- map2Any(features=kME, unique_id, map_to="SYMBOL", 
                                unique_id_col=2, platform, tables_dir, 
                                keep_all=T)
                 
@@ -516,7 +515,7 @@ search_queries_table1 <- function(data_dirs, MONDO, UBERON){
         return(DS_attr$Value[DS_attr$Attribute=="Technology"])
       })
       
-      ## Restrict to data collections with datasets that utilized both technologies:
+      ## Restrict to data collections that utilized both technologies:
       
       if(sum(is.element(unique(techs), c("Microarray", "Sequencer")))==2){
         
@@ -782,14 +781,14 @@ search_queries_table1 <- function(data_dirs, MONDO, UBERON){
             
             kME <- fread(list.files(path=networks[j], pattern="kME", full.names=T), data.table=F)
             
-            if(unique_id=="SYMBOL" & feature_type=="SYMBOL"){
+            if(unique_id=="SYMBOL"){
               
               kME <- mapAlias2Symbol(features=kME, unique_id_col=2, 
                                      tables_dir, keep_all=T, fill_NAs=T)
               
             } else {
               
-              kME <- map2Any(features=kME, unique_id, map_to=feature_type, 
+              kME <- map2Any(features=kME, unique_id, map_to="SYMBOL", 
                              unique_id_col=2, platform, tables_dir, 
                              keep_all=T)
               
@@ -880,20 +879,276 @@ search_queries_table1 <- function(data_dirs, MONDO, UBERON){
     
     if(!is.na(data_dirs$FM_dir[i])){
       
-      DS_attr <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="DS[0-9]+_attributes", full.names=T)[1])
+      DS_attr <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="DS_attributes", full.names=T)[1])
       
       if(DS_attr$Value[DS_attr$Attribute=="Technology"]=="Sequencer"){
         
-        input_dataset <- DS_attr$Value[DS_attr$Attribute=="Input Dataset"]
+        SN_attr_files <- list.files(path=data_dirs$SN_dir[i], pattern="DS_attributes", full.names=T)
+        proj_attr <- read.csv(list.files(path=data_dirs$FM_dir[i], pattern="project_attributes", full.names=T))
+        input_dataset <- data_dirs$Title[i]
+
+        ## Get sample attributes for dataset used as input for FindModules:
         
-        SN_files <- list.files()
+        for(j in 1:length(SN_attr_files)){
+          DS_attr <- read.csv(SN_attr_files[j])
+          dataset <- paste(DS_attr$Value[DS_attr$Attribute=="Title"],
+                           DS_attr$Value[DS_attr$Attribute=="Version"])
+          if(dataset==input_dataset) break
+        }
         
+        sampleinfo <- read.csv(gsub("DS_attributes", "sample_attributes", SN_attr_files[j]))
+        
+        if(is.element("Developmental_Epoch", colnames(sampleinfo))){ 
+          
+          glioma_samples <- get_glioma_samples(mondo_vec=sampleinfo$MONDO_ID)
+          
+          if(length(intersect(glioma_samples, grep("adult", sampleinfo$Developmental_Epoch, ignore.case=T)))==nrow(sampleinfo)){
+            
+            analyte_file <- gsub("_DS_attributes", "", SN_attr_files[j])
+            analyte_file <- sapply(strsplit(analyte_file, "/"), function(x){
+              x[length(x)]
+            })
+            
+            return(data.frame(Dataset=input_dataset, 
+                              Analyte_File=analyte_file))
+            
+          }
+          
+        }
         
       }
       
     }
     
   })
+  example10 <- do.call(rbind, example10_list)
+  
+  write.csv(example10, file=paste0("table1_example10_search_results.csv"), row.names=F)
+  
+  ############################################# Table 1, example 11 ############################################# 
+  
+  ## Find all Gene Set Enrichment Results (.pdf) for Covariation Networks produced from adult human glioma 
+  ## samples using the top 1% or higher of biweight midcorrelations and a minimum module size ≥ 20
+  
+  ############################################# Table 1, example 12 ############################################# 
+  
+  ## Export a list of unique gene symbols for covariation modules identified in bulk RNA-seq datasets 
+  ## that include adult human male gliomas and are maximally enriched with markers of radial glia (cell type)
+  
+  example12_list <- lapply(1:nrow(data_dirs), function(i){
+    
+    if(!is.na(data_dirs$FM_dir[i])){
+      
+      DS_attr <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="DS_attributes", full.names=T)[1])
+      
+      if(DS_attr$Value[DS_attr$Attribute=="Technology"]=="Sequencer"){
+        
+        sampleinfo <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="sample_attributes", full.names=T)[1])
+        
+        if(is.element("Developmental_Epoch", colnames(sampleinfo))){ 
+          
+          glioma_samples <- get_glioma_samples(mondo_vec=sampleinfo$MONDO_ID)
+          
+          if(length(intersect(grep("M", sampleinfo$Sex), 
+                              intersect(grep("adult", sampleinfo$Developmental_Epoch, ignore.case=T), 
+                                        glioma_samples)))>0){
+            
+            networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
+            networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
+            
+            networks_list <- future_lapply(1:length(networks), function(j){
+              
+              enrich <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
+              enrich_list <- lapply(enrich, covariation_enrich_search, setname="radial_glia")
+              enrich_out <- do.call(rbind, enrich_list)
+              if(nrow(enrich_out)>0){
+                DS_attr <- list.files(path=data_dirs$SN_dir[i], pattern="DS_attributes", full.names=T)[1]
+                network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
+                return(data.frame(Dataset=data_dirs$Title[i], Network=network, enrich_out, 
+                                  DS_Attr=DS_attr))
+              }
+              
+            }, future.seed=T)
+            modules <- do.call(rbind, networks_list)
+            
+            if(nrow(modules)>0){
+              
+              modules <- modules |> dplyr::slice_min(Pval, with_ties=T)
+              
+              ## Get module genes
+              
+              gene_list <- lapply(1:nrow(modules), function(j){
+                
+                kME <- fread(list.files(path=file.path(data_dirs$FM_dir[i], modules$Network[j]), 
+                                        pattern="kME", full.names=T), data.table=F)
+                col <- kME[,grep(toupper(modules$Mod_Def[j]), toupper(colnames(kME)))]
+                kME <- kME[is.element(col, as.character(modules$Module[j])),]
+                
+                ## Map identifiers to SYMBOL:
+                
+                DS_attr <- read.csv(modules$DS_Attr[j])
+                unique_id <- DS_attr$Value[DS_attr$Attribute=="Unique Identifier"]
+                platform <- DS_attr$Value[DS_attr$Attribute=="Mapping Tables"]
+                
+                if(unique_id=="SYMBOL"){
+                  
+                  kME <- mapAlias2Symbol(features=kME, unique_id_col=2, 
+                                         tables_dir, keep_all=T, fill_NAs=T)
+                  
+                } else {
+                  
+                  kME <- map2Any(features=kME, unique_id, map_to="SYMBOL", 
+                                 unique_id_col=2, platform, tables_dir, 
+                                 keep_all=T)
+                  
+                }
+                
+                kME <- kME[,!is.element(colnames(kME), "SYMBOL.y")]
+                
+                kME <- kME |> 
+                  tidyr::separate_rows(SYMBOL, sep=" \\| ") 
+                
+                return(data.frame(SYMBOL=unique(kME$SYMBOL),
+                                  Dataset=modules$Dataset[j], Network=modules$Network[j],
+                                  SetName=modules$SetName[j], Module=modules$Module[j],
+                                  Mod_Def=modules$Mod_Def))
+                
+              })
+              
+              return(do.call(rbind, gene_list))
+              
+            } 
+            
+          } 
+          
+        } 
+        
+      }
+      
+    }
+    
+  })
+  example12 <- do.call(rbind, example12_list)
+  
+  write.csv(example12, file=paste0("table1_example12_search_results_modules.csv"), row.names=F)
+  
+  example12 <- example12 |> 
+    na_if("NA") |>
+    dplyr::filter(!is.na(SYMBOL)) |>
+    dplyr::group_by(SYMBOL) |> 
+    dplyr::summarise(No.Datasets=n()) |>
+    dplyr::arrange(desc(No.Datasets))
+  
+  write.csv(example12, file=paste0("table1_example12_search_results.csv"), row.names=F)
+  
+  ############################################# Table 1, example 13 ############################################# 
+  
+  ## Download complete kME table for a covariation network produced from GSE15824 using the top .01% 
+  ## of biweight midcorrelations and a minimum module size of 8
+  
+  ############################################# Table 1, example 14 ############################################# 
+  
+  ## Find all unique human Entrez IDs for covariation modules generated EXCLUSIVELY from adult human gliomas 
+  ## that were maximally enriched with markers of OPCs (cell type)
+  
+  example14_list <- lapply(1:nrow(data_dirs), function(i){
+    
+    if(!is.na(data_dirs$FM_dir[i])){
+      
+      # DS_attr <-  read.csv(list.files(path=data_dirs$SN_dir[i], pattern="DS_attributes", full.names=T)[1])
+      # unique_id <- DS_attr$Value[DS_attr$Attribute=="Unique Identifier"]
+      # if(unique_id=="ENTREZID"){
+      #   stop(i)
+      # } 
+      
+      sampleinfo <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="sample_attributes", full.names=T)[1])
+      
+      if(is.element("Developmental_Epoch", colnames(sampleinfo))){ 
+        
+        glioma_samples <- get_glioma_samples(mondo_vec=sampleinfo$MONDO_ID)
+        
+        if(length(intersect(glioma_samples, grep("adult", sampleinfo$Developmental_Epoch, ignore.case=T)))==nrow(sampleinfo)){
+          
+          networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
+          networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
+          
+          networks_list <- future_lapply(1:length(networks), function(j){
+            
+            enrich <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
+            enrich_list <- lapply(enrich, covariation_enrich_search, setname="OPC")
+            enrich_out <- do.call(rbind, enrich_list)
+            if(nrow(enrich_out)>0){
+              DS_attr <- list.files(path=data_dirs$SN_dir[i], pattern="DS_attributes", full.names=T)[1]
+              network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
+              return(data.frame(Dataset=data_dirs$Title[i], Network=network, enrich_out, 
+                                DS_Attr=DS_attr))
+            }
+            
+          }, future.seed=T)
+          modules <- do.call(rbind, networks_list)
+          
+          if(nrow(modules)>0){
+            
+            modules <- modules |> dplyr::slice_min(Pval, with_ties=T)
+            
+            ## Get module genes
+            
+            gene_list <- lapply(1:nrow(modules), function(j){
+              
+              kME <- fread(list.files(path=file.path(data_dirs$FM_dir[i], modules$Network[j]), 
+                                      pattern="kME", full.names=T), data.table=F)
+              col <- kME[,grep(toupper(modules$Mod_Def[j]), toupper(colnames(kME)))]
+              kME <- kME[is.element(col, as.character(modules$Module[j])),]
+              
+              ## Map identifiers to SYMBOL:
+              
+              DS_attr <- read.csv(modules$DS_Attr[j])
+              unique_id <- DS_attr$Value[DS_attr$Attribute=="Unique Identifier"]
+              platform <- DS_attr$Value[DS_attr$Attribute=="Mapping Tables"]
+            
+              if(unique_id!="ENTREZID"){
+                
+                kME <- map2Any(features=kME, unique_id, map_to="ENTREZID", 
+                               unique_id_col=2, platform, tables_dir, 
+                               keep_all=T)
+                
+              }
+              
+              kME <- kME[,!is.element(colnames(kME), "SYMBOL.y")]
+              
+              kME <- kME |> 
+                tidyr::separate_rows(SYMBOL, sep=" \\| ") 
+              
+              return(data.frame(SYMBOL=unique(kME$SYMBOL),
+                                Dataset=modules$Dataset[j], Network=modules$Network[j],
+                                SetName=modules$SetName[j], Module=modules$Module[j],
+                                Mod_Def=modules$Mod_Def))
+              
+            })
+            
+            return(do.call(rbind, gene_list))
+            
+          } 
+          
+        } 
+        
+      } 
+      
+    }
+    
+  })
+  example12 <- do.call(rbind, example12_list)
+  
+  write.csv(example12, file=paste0("table1_example12_search_results_modules.csv"), row.names=F)
+  
+  example12 <- example12 |> 
+    na_if("NA") |>
+    dplyr::filter(!is.na(SYMBOL)) |>
+    dplyr::group_by(SYMBOL) |> 
+    dplyr::summarise(No.Datasets=n()) |>
+    dplyr::arrange(desc(No.Datasets))
+  
+  write.csv(example12, file=paste0("table1_example12_search_results.csv"), row.names=F)
   
 }
 
