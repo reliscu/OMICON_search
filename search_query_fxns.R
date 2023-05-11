@@ -1,46 +1,39 @@
-setwd("/home/rebecca/omicon/advanced_search")
-
-## Search examples: https://docs.google.com/spreadsheets/d/1kLycqoQAKMgyJcb8orQ6x4Oh39sYg22G/edit#gid=1882786248
-
-tables_dir <- "/home/rebecca/omicon/mapping_tables/2022-11-02"
-
-data_dirs <- read.csv("/home/rebecca/omicon/advanced_search/data_directory_normal_2023-02-21.csv") %>% na_if("")
-
-nonbrain <- c("cranial nerve II", "C1 segment of cervical spinal cord")
-
-#############################################
-
 library(dplyr)
 library(tidyr)
 library(stringr)
 library(data.table)
 library(future.apply)
+library(ontologyIndex)
 
 options(future.globals.maxSize=Inf)
 plan(multicore, workers=10)
 
-# source("/home/rebecca/code/misc/jaccard_index.R")
 source("/home/rebecca/code/misc/map_identifiers/map_identifiers_function.R")
 
-search_queries_table2 <- function(data_dirs, nonbrain=NULL){
+## Test: table 2 example 1
+
+search_queries_table2 <- function(data_dirs, MONDO, UBERON){
   
   ############################################# Table 2, example 1 ############################################# 
   
   ## Find all human brain samples with any kind of disease (disease DOES NOT EQUAL Normal)
   
-  DC_dirs <- sapply(strsplit(na.omit(unique(data_dirs$DC_dir)), "/"), function(x){
+  DC_dirs <- unique(sapply(strsplit(na.omit(unique(data_dirs$DC_dir)), "/"), function(x){
     paste(x[-length(x)], collapse="/")
-  })
+  }))
   
   example1_list <- lapply(1:length(DC_dirs), function(i){
+    
     DC_attr <- read.csv(list.files(path=DC_dirs[i], pattern="DC_attributes", full.names=T))
-    sampleinfo <- fread(list.files(path=DC_dirs[i], pattern="sample_attributes", full.names=T), data.table=F)
-    sampleinfo |> 
-      na_if("") |>
+    sampleinfo <- fread(list.files(path=DC_dirs[i], pattern="sample_attributes", 
+                                   full.names=T), data.table=F)
+    sampleinfo <- sampleinfo[get_brain_samples(uberon_vec=sampleinfo$UBERON_ID),]
+    sampleinfo |> na_if("") |>
       dplyr::filter(sampleinfo$Disease!="Normal") |>
       dplyr::mutate(Data_Collection=DC_attr[1,2]) |>
       dplyr::select(Data_Collection, Label, 
                     Organism, Tissue, Disease)
+    
   })
   example1 <- do.call(rbind, example1_list)
   
@@ -126,8 +119,9 @@ search_queries_table2 <- function(data_dirs, nonbrain=NULL){
               
             } else {
               
-              kME <- map2Any(features=kME, unique_id, map_to=feature_type, unique_id_col=2, platform, 
-                             tables_dir, keep_all=T)
+              kME <- map2Any(features=kME, unique_id, map_to=feature_type, 
+                             unique_id_col=2, platform, tables_dir, 
+                             keep_all=T)
               
             }
             
@@ -136,12 +130,12 @@ search_queries_table2 <- function(data_dirs, nonbrain=NULL){
               tidyr::separate_rows(SYMBOL, sep=" \\| ") |>
               as.data.frame()
             
-            feature_mods <- covariation_feature_search(kME, feature_list, feature_type, mod_def="Any")
+            feature_mods <- covariation_feature_search(kME, feature_list, feature_type, mod_def="Any", and_or="AND")
             
             if(!is.null(feature_mods)){
               print(j)
               network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
-              return(data.frame(data_dirs$Title[i], Network=network, feature_mods))
+              return(data.frame(Dataset=data_dirs$Title[i], Network=network, feature_mods))
             }
 
           }, future.seed=T) 
@@ -167,37 +161,35 @@ search_queries_table2 <- function(data_dirs, nonbrain=NULL){
  
   ############################################# Table 2, example 4 ############################################# 
   
-  ## Find all covariation modules in datasets consisting solely of human normal brain samples 
+  ## Find all covariation modules in datasets consisting SOLELY of human normal brain samples 
   ## that are significantly enriched with microglial markers, ranked by enrichment P-values
-  
+    
   example4_list <- lapply(1:nrow(data_dirs), function(i){
     
     if(!is.na(data_dirs$FM_dir[i])){
       
       sampleinfo <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="sample_attributes", full.names=T)[1])
       
-      if(sum(is.element(sampleinfo$Tissue, nonbrain))==0){
-        
-        if(length(grep("Normal", sampleinfo$Disease, ignore.case=T))==nrow(sampleinfo)){
+      brain_samples <- get_brain_samples(uberon_vec=sampleinfo$UBERON_ID)
+
+      if(length(intersect(brain_samples, grep("Normal", sampleinfo$Disease, ignore.case=T)))==nrow(sampleinfo)){
           
-            networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
-            networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
+          networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
+          networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
+          
+          networks_list <- future_lapply(1:length(networks), function(j){
             
-            networks_list <- future_lapply(1:length(networks), function(j){
-              
-              enrich <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
-              enrich_list <- lapply(enrich, covariation_enrich_search, setname="microglia")
-              network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
-              return(data.frame(data_dirs$Title[i], Network=network, do.call(rbind, enrich_list)))
-              
-            }, future.seed=T) 
+            enrich <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
+            enrich_list <- lapply(enrich, covariation_enrich_search, setname="microglia")
+            network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
+            return(data.frame(data_dirs$Title[i], Network=network, do.call(rbind, enrich_list)))
             
-            return(do.call(rbind, networks_list))
+          }, future.seed=T) 
+          
+          return(do.call(rbind, networks_list))
             
         }
         
-      } 
-      
     } 
     
   })
@@ -227,9 +219,12 @@ search_queries_table2 <- function(data_dirs, nonbrain=NULL){
       
       if(is.element("Developmental_Epoch", colnames(sampleinfo))){ 
         
-        if(length(intersect(grep("M", sampleinfo$Sex), 
-                            intersect(grep("adult", sampleinfo$Developmental_Epoch, ignore.case=T), 
-                                      grep("Normal", sampleinfo$Disease))))>0){
+        brain_samples <- get_brain_samples(uberon_vec=sampleinfo$UBERON_ID)
+        
+        if(length(intersect(brain_samples, 
+                            intersect(grep("M", sampleinfo$Sex), 
+                                      intersect(grep("adult", sampleinfo$Developmental_Epoch, ignore.case=T), 
+                                                grep("Normal", sampleinfo$Disease)))))>0){
           
           networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
           networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
@@ -275,8 +270,9 @@ search_queries_table2 <- function(data_dirs, nonbrain=NULL){
                 
               } else {
                 
-                kME <- map2Any(features=kME, unique_id, map_to="SYMBOL", unique_id_col=2, platform, 
-                               tables_dir, keep_all=T)
+                kME <- map2Any(features=kME, unique_id, map_to=feature_type, 
+                               unique_id_col=2, platform, tables_dir, 
+                               keep_all=T)
                 
               }
               
@@ -318,16 +314,12 @@ search_queries_table2 <- function(data_dirs, nonbrain=NULL){
   
 }
 
-search_queries_table1 <- function(data_dirs, nonbrain=NULL){
+search_queries_table1 <- function(data_dirs, MONDO, UBERON){
   
   ############################################# Table 1, example 1 ############################################# 
   
   ## Find all RNA-seq datasets with at least 100 samples from adult human gliomas that contain the gene MALAT1
-  
-  disease <- c("glioblastoma", "astrocytoma (excluding glioblastoma)", 
-               "oligoastrocytoma", "glioma", "oligodendroglioma", "low grade glioma", 
-               "brain glioblastoma") 
-  
+
   data_dirs <- read.csv("/home/rebecca/omicon/advanced_search/data_directory_glioma_2023-02-21.csv") %>% na_if("")
   
   DS_dirs <- na.omit(c(unique(data_dirs$SN_dir), unique(data_dirs$DC_dir)))
@@ -350,8 +342,9 @@ search_queries_table1 <- function(data_dirs, nonbrain=NULL){
         
         if(is.element("Developmental_Epoch", colnames(OR_sampleinfo))){
           
-          OR_sampleinfo <- OR_sampleinfo[intersect(grep("adult", OR_sampleinfo$Developmental_Epoch, ignore.case=T),
-                                                   which(is.element(OR_sampleinfo$Disease, disease))),]
+          glioma_samples <- get_glioma_samples(mondo_vec=OR_sampleinfo$MONDO_ID)
+          
+          OR_sampleinfo <- OR_sampleinfo[intersect(glioma_samples, grep("adult", OR_sampleinfo$Developmental_Epoch, ignore.case=T)),]
           
           if(nrow(OR_sampleinfo)>=100){
             
@@ -366,7 +359,7 @@ search_queries_table1 <- function(data_dirs, nonbrain=NULL){
               
               OR_feature <- map2Any(features=OR_feature, unique_id, map_to="SYMBOL", 
                                     unique_id_col=2, platform, tables_dir, keep_all=T)
-              
+
             }
             
             OR_feature <- OR_feature |> 
@@ -451,8 +444,9 @@ search_queries_table1 <- function(data_dirs, nonbrain=NULL){
         
         if(is.element("Developmental_Epoch", colnames(sampleinfo))){
           
-          sampleinfo <- sampleinfo[intersect(grep("adult", sampleinfo$Developmental_Epoch, ignore.case=T),
-                                             which(is.element(sampleinfo$Disease, disease))),]
+          glioma_samples <- get_glioma_samples(mondo_vec=sampleinfo$MONDO_ID)
+          
+          sampleinfo <- sampleinfo[intersect(glioma_samples, grep("adult", sampleinfo$Developmental_Epoch, ignore.case=T)),]
           
           if(nrow(sampleinfo)>=100){
             
@@ -501,19 +495,405 @@ search_queries_table1 <- function(data_dirs, nonbrain=NULL){
   ## Find all data collections that include paired RNA-seq and microarray datasets from the same human 
   ## brain samples, with sample size ≥ 100
   
-  ############################################# Table 1, example 3 ############################################# 
+  DC_dirs <- unique(sapply(strsplit(na.omit(unique(data_dirs$DC_dir)), "/"), function(x){
+    paste(x[-length(x)], collapse="/")
+  }))
   
-  ## Find all human brain samples with any kind of disease
+  example2_list <- lapply(1:length(DC_dirs), function(i){
+    
+    sampleinfo <- fread(list.files(path=DC_dirs[i], pattern="sample_attributes", 
+                                   full.names=T), data.table=F)
+    
+    ## Restrict to data collections with at least 100 samples:
+    
+    if(nrow(sampleinfo>=100)){
+      
+      DS_dirs <- list.dirs(path=DC_dirs[i], recursive=F)
+      
+      techs <- sapply(1:length(DS_dirs), function(j){
+        DS_attr <- fread(list.files(path=DS_dirs[j], pattern="DS[0-9]+_attributes", 
+                                    full.names=T), data.table=F)
+        return(DS_attr$Value[DS_attr$Attribute=="Technology"])
+      })
+      
+      ## Restrict to data collections with datasets that utilized both technologies:
+      
+      if(sum(is.element(unique(techs), c("Microarray", "Sequencer")))==2){
+        
+        DS_samples <- lapply(1:length(DS_dirs), function(j){
+          DS_sampleinfo <- fread(list.files(path=DS_dirs[j], pattern="sample_attributes", full.names=T), data.table=F)
+          return(data.frame(Label=DS_sampleinfo$Label, Technology=techs[j],
+                            UBERON_ID=DS_sampleinfo$UBERON_ID))
+        })
+        
+        samples <- do.call(rbind, DS_samples)
+        
+        ## Restrict to brain samples:
+        
+        samples <- samples[get_brain_samples(uberon_vec=samples$UBERON_ID),]
+        
+        ## Identify samples that were profiled with both technologies:
+        
+        samples <- samples |>
+          dplyr::group_by(Label) |>
+          dplyr::summarise(
+            Technology=paste(sort(unique(Technology)), collapse=", ")
+          )
+        
+        if(sum(grepl("Microarray, Sequencer", samples$Technology))>0){
+          
+          DC_attr <- read.csv(list.files(path=DC_dirs[i], pattern="DC_attributes", full.names=T))
+          data_collection <- paste(DC_attr$Value[DC_attr$Attribute=="Title"])
+          return(data.frame(Data_Collection=data_collection))
+          
+        }
+        
+      }
+      
+    }
+    
+  })
+  example2 <- do.call(rbind, example2_list)
+  
+  write.csv(example2, file=paste0("table1_example2_search_results.csv"), row.names=F)
   
   ############################################# Table 1, example 4 ############################################# 
   
   ## Find all adult human malignant glioma samples with deleterious mutations in IDH1
+
+  DC_dirs <- unique(sapply(strsplit(na.omit(unique(data_dirs$DC_dir)), "/"), function(x){
+    paste(x[-length(x)], collapse="/")
+  }))
   
-  ############################################# Table 1, example 4 ############################################# 
+  example4_list <- lapply(1:length(DC_dirs), function(i){
+    
+    DC_attr <- read.csv(list.files(path=DC_dirs[i], pattern="DC_attributes", full.names=T))
+    sampleinfo <- fread(list.files(path=DC_dirs[i], pattern="sample_attributes", 
+                                   full.names=T), data.table=F)
+    
+    if(is.element("Developmental_Epoch", colnames(sampleinfo))){
+      
+      glioma_samples <- get_glioma_samples(mondo_vec=sampleinfo$MONDO_ID)
+      
+      sampleinfo <- sampleinfo[intersect(intersect(grep("adult", sampleinfo$Developmental_Epoch, ignore.case=T), 
+                                                   which(sampleinfo$Tumor_Grade>=2)), glioma_samples),]
+      
+      if(nrow(sampleinfo)>0 & sum(grepl("IDH1", colnames(sampleinfo)))>0){
+
+        sampleinfo <- sampleinfo[,!grepl("Source", colnames(sampleinfo))]
+        cols <- grep("IDH1", colnames(sampleinfo))
+        mut_samples <- apply(sampleinfo[cols], 1, function(x){
+          sum(is.element(x, "NCIT:C172343"))>0
+        })
+        
+        if(sum(mut_samples)>0){
+          
+          sampleinfo <- sampleinfo[mut_samples,]
+          sampleinfo$IDH1_Mut <- apply(sampleinfo[cols], 1, function(x){
+            x <- x[x!="WT"]
+            x[x==""] <- NA
+            paste(na.omit(unique(x)), collapse=", ")
+          })
+          sampleinfo |> 
+            dplyr::mutate(Data_Collection=DC_attr[1,2]) |>
+            dplyr::select(Data_Collection, Label, Organism,
+                          Disease, Developmental_Epoch, 
+                          Tumor_Grade, IDH1_Mut)
+          
+        }
+        
+      }
+      
+    }
+    
+  })
+  example4 <- do.call(rbind, example4_list)
   
+  write.csv(example4, file=paste0("table1_example4_search_results.csv"), row.names=F)
+
+  ############################################# Table 1, example 5 ############################################# 
+
   ## Find all adult human oligodendroglioma samples with deletion of chr1p OR chr19q 
   ## AND no mutation in IDH1
+
+  DC_dirs <- unique(sapply(strsplit(na.omit(unique(data_dirs$DC_dir)), "/"), function(x){
+    paste(x[-length(x)], collapse="/")
+  }))
   
+  example5_list <- lapply(1:length(DC_dirs), function(i){
+    
+    DC_attr <- read.csv(list.files(path=DC_dirs[i], pattern="DC_attributes", full.names=T))
+    sampleinfo <- fread(list.files(path=DC_dirs[i], pattern="sample_attributes", 
+                                   full.names=T), data.table=F)
+    
+    if(is.element("Developmental_Epoch", colnames(sampleinfo))){
+      
+      sampleinfo <- sampleinfo[intersect(grep("adult", sampleinfo$Developmental_Epoch, ignore.case=T),
+                                         grep("oligodendroglioma", sampleinfo$Disease)),]
+      
+      if(nrow(sampleinfo)>0 & 
+         sum(grepl("IDH1", colnames(sampleinfo)))>0 & 
+         sum(grepl("chr1p|chr19q", colnames(sampleinfo)))>0){
+        
+        sampleinfo <- sampleinfo[,!grepl("Source", colnames(sampleinfo))]
+        
+        ## Get all IDH1 WT samples:
+        
+        IDH1_cols <- grep("IDH1", colnames(sampleinfo))
+        WT_samples <- which(apply(sampleinfo[IDH1_cols], 1, function(x){
+          sum(is.element(x, "WT"))==length(IDH1_cols)
+        }))
+        
+        ## Get all samples with chr1p and/or chr19q deletion:
+        
+        del_cols <- grep("chr1p|chr19q", colnames(sampleinfo))
+        del_samples <- which(apply(sampleinfo[del_cols], 1, function(x){
+          sum(is.element(x, "SO:0001743"))>0
+        }))
+
+        mut_samples <- intersect(WT_samples, del_samples)
+        
+        if(length(mut_samples)>0){
+          
+          sampleinfo <- sampleinfo[mut_samples,]
+          
+          sampleinfo$IDH1_Mut <- apply(sampleinfo[IDH1_cols], 1, function(x){
+            x[x==""] <- NA
+            paste(na.omit(unique(x)), collapse=", ")
+          })
+          
+          sampleinfo$Deletion <- apply(sampleinfo[del_cols], 1, function(x){
+            x <- colnames(sampleinfo)[del_cols][x=="SO:0001743"]
+            paste(gsub("_Mut.*", "", na.omit(unique(x))), collapse=", ")
+          })
+          
+          sampleinfo |> 
+            dplyr::mutate(Data_Collection=DC_attr[1,2]) |>
+            dplyr::select(Data_Collection, Label, Organism,
+                          Disease, Developmental_Epoch, 
+                          IDH1_Mut, Deletion)
+          
+        }
+      
+      }
+
+    }
+    
+  })
+  example5 <- do.call(rbind, example5_list)
+  
+  write.csv(example5, file=paste0("table1_example5_search_results.csv"), row.names=F)
+  
+  ############################################# Table 1, example 6 ############################################# 
+  
+  ## Find all Analyses involving FM by Rebecca that have been created since 4/1/21
+  
+  example6_list <- lapply(1:nrow(data_dirs), function(i){
+    
+    if(!is.na(data_dirs$FM_dir[i])){
+      proj_attr <- read.csv(list.files(path=data_dirs$FM_dir[i], pattern="project_attributes", full.names=T))
+      owner <- proj_attr$Value[proj_attr$Attribute=="Owner"]
+      if(owner=="Rebecca Eliscu"){
+        analysis <- proj_attr$Value[proj_attr$Attribute=="Title"]
+        return(data.frame(Analysis=analysis))
+      }
+    }
+    
+  })
+  example6 <- do.call(rbind, example6_list)
+  
+  write.csv(example6, file=paste0("table1_example6_search_results.csv"), row.names=F)
+
+  ############################################# Table 1, example 7 ############################################# 
+  
+  ## Find all covariation networks from human gliomas on Affymetrix U133A microarrays where min module size >= 10 and # modules >= 50
+  
+  example7_list <- lapply(1:nrow(data_dirs), function(i){
+    
+    if(!is.na(data_dirs$FM_dir[i])){
+      
+      DS_attr <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="DS_attributes", full.names=T)[1])
+      sampleinfo <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="sample_attributes", full.names=T)[1])
+      platform <- DS_attr$Value[DS_attr$Attribute=="Platform"]
+      
+      glioma_samples <- get_glioma_samples(mondo_vec=sampleinfo$MONDO_ID)
+      
+      if(length(glioma_samples)>0 & platform=="Affymetrix U133A"){
+        
+        networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
+        networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
+        minsize <- as.numeric(gsub("minSize", "", sapply(strsplit(networks, "_"), function(x){
+          x[grep("minSize", x)]
+        })))
+        networks <- networks[minsize>=10]
+        
+        network_list <- lapply(1:length(networks), function(j){
+          
+          modstats <- fread(list.files(path=networks[j], pattern="Module_statistics", full.names=T)[1], data.table=F)
+          
+          if(nrow(modstats)>=50){
+            DS_attr <- read.csv(list.files(path=data_dirs$FM_dir[i], pattern="attributes", full.names=T))
+            network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
+            return(data.frame(Dataset=data_dirs$Title[i], Network=network, 
+                              No.Modules=nrow(modstats)))
+          } 
+          
+        }) 
+        
+        return(do.call(rbind, network_list))
+        
+      } 
+      
+    } 
+    
+  })
+  example7 <- do.call(rbind, example7_list)
+  
+  write.csv(example7, file=paste0("table1_example7_search_results.csv"), row.names=F)
+  
+  ############################################# Table 1, example 8 ############################################# 
+
+  ## Find all covariation modules in datasets consisting SOLELY of adult human glioma samples that contain 
+  ## the following genes: BUB1, MKI67, PBK, and WEE1
+
+  feature_list <- c("BUB1", "MKI67", "PBK", "WEE1")
+  feature_type <- "SYMBOL"
+  
+  example8_list <- lapply(1:nrow(data_dirs), function(i){
+    
+    if(!is.na(data_dirs$FM_dir[i])){
+      
+      sampleinfo <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="sample_attributes", full.names=T)[1])
+      
+      if(is.element("Developmental_Epoch", colnames(sampleinfo))){ 
+        
+        glioma_samples <- get_glioma_samples(mondo_vec=sampleinfo$MONDO_ID)
+        
+        if(length(intersect(glioma_samples, grep("adult", sampleinfo$Developmental_Epoch, ignore.case=T)))==nrow(sampleinfo)){
+          
+          networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
+          networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
+          
+          DS_attr <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="DS_attributes", full.names=T)[1])
+          unique_id <- DS_attr$Value[DS_attr$Attribute=="Unique Identifier"]
+          platform <- DS_attr$Value[DS_attr$Attribute=="Mapping Tables"]
+          
+          networks_list <- future_lapply(1:length(networks), function(j){
+            
+            kME <- fread(list.files(path=networks[j], pattern="kME", full.names=T), data.table=F)
+            
+            if(unique_id=="SYMBOL" & feature_type=="SYMBOL"){
+              
+              kME <- mapAlias2Symbol(features=kME, unique_id_col=2, 
+                                     tables_dir, keep_all=T, fill_NAs=T)
+              
+            } else {
+              
+              kME <- map2Any(features=kME, unique_id, map_to=feature_type, 
+                             unique_id_col=2, platform, tables_dir, 
+                             keep_all=T)
+              
+            }
+            
+            kME <- kME[,!is.element(colnames(kME), "SYMBOL.y")]
+            kME <- kME |> na_if("NA") |> na_if("") |>
+              tidyr::separate_rows(SYMBOL, sep=" \\| ") |>
+              as.data.frame()
+            
+            feature_mods <- covariation_feature_search(kME, feature_list, feature_type, mod_def="Any", and_or="OR")
+            
+            if(!is.null(feature_mods)){
+              network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
+              return(data.frame(Dataset=data_dirs$Title[i], Network=network, feature_mods))
+            }
+            
+          }, future.seed=T) 
+          
+          return(do.call(rbind, networks_list))
+          
+        }
+        
+      }
+      
+    } 
+    
+  })
+  example8 <- do.call(rbind, example8_list)
+  
+  write.csv(example8, file=paste0("table1_example8_search_results.csv"), row.names=F)
+  
+  ############################################# Table 1, example 9 ############################################# 
+  
+  ## Find all covariation modules in datasets consisting SOLELY of adult human oligodendroglioma samples that
+  ## are significantly enriched with microglial markers, ranked by enrichment P-values
+  
+  example9_list <- lapply(1:nrow(data_dirs), function(i){
+    
+    if(!is.na(data_dirs$FM_dir[i])){
+      
+      sampleinfo <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="sample_attributes", full.names=T)[1])
+      
+      if(is.element("Developmental_Epoch", colnames(sampleinfo))){
+        
+        if(length(intersect(grep("adult", sampleinfo$Developmental_Epoch, ignore.case=T),
+                            grep("oligodendroglioma", sampleinfo$Disease)))==nrow(sampleinfo)){
+          
+          networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
+          networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
+          
+          networks_list <- future_lapply(1:length(networks), function(j){
+            
+            enrich <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
+            enrich_list <- lapply(enrich, covariation_enrich_search, setname="microglia")
+            network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
+            return(data.frame(data_dirs$Title[i], Network=network, do.call(rbind, enrich_list)))
+            
+          }, future.seed=T) 
+          
+          return(do.call(rbind, networks_list))
+          
+        }
+        
+      }
+
+    } 
+    
+  })
+  example9 <- do.call(rbind, example9_list)
+  
+  example9$Mod_ID <- paste(example9$Dataset, example9$Network, 
+                           example9$Module, example9$Mod_Def)
+  
+  example9 <- example9 |> 
+    dplyr::group_by(Mod_ID) |>
+    dplyr::slice_min(Pval, with_ties=T) |> 
+    dplyr::arrange(Pval)
+  
+  write.csv(example9, file=paste0("table1_example9_search_results.csv"), row.names=F)
+  
+  ############################################# Table 1, example 10 ############################################# 
+  
+  ## Find all Analyte Data files generated EXCLUSIVELY from adult human glioma samples by RNA-seq that 
+  ## were used as input for covariation analysis by FindModules
+  
+  example10_list <- lapply(1:nrow(data_dirs), function(i){
+    
+    if(!is.na(data_dirs$FM_dir[i])){
+      
+      DS_attr <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="DS[0-9]+_attributes", full.names=T)[1])
+      
+      if(DS_attr$Value[DS_attr$Attribute=="Technology"]=="Sequencer"){
+        
+        input_dataset <- DS_attr$Value[DS_attr$Attribute=="Input Dataset"]
+        
+        SN_files <- list.files()
+        
+        
+      }
+      
+    }
+    
+  })
   
 }
 
@@ -543,11 +923,13 @@ covariation_enrich_search <- function(enrich, setname, pval_cut=.05){
 
 }
 
-covariation_feature_search <- function(kME, feature_list, feature_type, mod_def=c("Any", "BC", "FDR")){
+covariation_feature_search <- function(kME, feature_list, feature_type, 
+                                       mod_def=c("Any", "BC", "FDR"), 
+                                       and_or="AND"){
   
-  modbc <- mod2list(kME, feature_type, feature_list, mod_def="BC", and_or="AND")
-  modfdr <- mod2list(kME, feature_type, feature_list, mod_def="FDR", and_or="AND")
-  modseed <- mod2list(kME, feature_type, feature_list, mod_def="Seed", and_or="AND")
+  modbc <- mod2list(kME, feature_type, feature_list, mod_def="BC", and_or)
+  modfdr <- mod2list(kME, feature_type, feature_list, mod_def="FDR", and_or)
+  modseed <- mod2list(kME, feature_type, feature_list, mod_def="Seed", and_or)
   
   if(sum(c(length(modbc), length(modfdr), length(modseed)))>0){
     modules <- c(names(modbc), names(modfdr), names(modseed))
@@ -559,7 +941,7 @@ covariation_feature_search <- function(kME, feature_list, feature_type, mod_def=
   
 }
 
-mod2list <- function(kME, feature_type, feature_list=NULL,
+mod2list <- function(kME, feature_type, feature_list=NULL, 
                      mod_def=c("BC", "FDR", "Seed"), 
                      and_or=c("AND", "OR")){
   
@@ -582,6 +964,22 @@ mod2list <- function(kME, feature_type, feature_list=NULL,
   
   return(module_list)
   
+}
+
+get_brain_samples <- function(uberon_vec){
+  id <- UBERON$id[UBERON$name=="brain"]
+  sapply(1:length(uberon_vec), function(i){
+    parents <- get_ancestors(UBERON, terms=uberon_vec[i])
+    if(sum(is.element(parents, id))>0) return(i)
+  })
+}
+
+get_glioma_samples <- function(mondo_vec){
+  sapply(1:length(mondo_vec), function(i){
+    parents <- get_ancestors(MONDO, terms=mondo_vec[i])
+    id <- MONDO$id[MONDO$name=="glioma"]
+    if(sum(is.element(parents, id))>0) return(i)
+  })
 }
 
 make_data_directory <- function(root_dir){
