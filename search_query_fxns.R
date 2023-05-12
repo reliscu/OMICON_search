@@ -88,7 +88,6 @@ search_queries_table2 <- function(data_dirs, MONDO, UBERON){
   ## the following genes: BUB1, MKI67, PBK, and WEE1 (ranked by Jaccard index)
   
   feature_list <- c("BUB1", "MKI67", "PBK", "WEE1")
-  feature_type <- "SYMBOL"
   
   example3_list <- lapply(1:nrow(data_dirs), function(i){
     
@@ -112,14 +111,14 @@ search_queries_table2 <- function(data_dirs, MONDO, UBERON){
 
             kME <- fread(list.files(path=networks[j], pattern="kME", full.names=T), data.table=F)
             
-            if(unique_id=="SYMBOL" & feature_type=="SYMBOL"){
+            if(unique_id=="SYMBOL"){
               
               kME <- mapAlias2Symbol(features=kME, unique_id_col=2, 
                                      tables_dir, keep_all=T, fill_NAs=T)
               
             } else {
               
-              kME <- map2Any(features=kME, unique_id, map_to=feature_type, 
+              kME <- map2Any(features=kME, unique_id, map_to="SYMBOL", 
                              unique_id_col=2, platform, tables_dir, 
                              keep_all=T)
               
@@ -130,10 +129,9 @@ search_queries_table2 <- function(data_dirs, MONDO, UBERON){
               tidyr::separate_rows(SYMBOL, sep=" \\| ") |>
               as.data.frame()
             
-            feature_mods <- covariation_feature_search(kME, feature_list, feature_type, mod_def="Any", and_or="AND")
+            feature_mods <- covariation_feature_search(kME, feature_list, feature_type="SYMBOL", mod_def="Any", and_or="AND")
             
             if(!is.null(feature_mods)){
-              print(j)
               network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
               return(data.frame(Dataset=data_dirs$Title[i], Network=network, feature_mods))
             }
@@ -182,7 +180,7 @@ search_queries_table2 <- function(data_dirs, MONDO, UBERON){
             enrich <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
             enrich_list <- lapply(enrich, covariation_enrich_search, setname="microglia")
             network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
-            return(data.frame(data_dirs$Title[i], Network=network, do.call(rbind, enrich_list)))
+            return(data.frame(Dataset=data_dirs$Title[i], Network=network, do.call(rbind, enrich_list)))
             
           }, future.seed=T) 
           
@@ -197,6 +195,8 @@ search_queries_table2 <- function(data_dirs, MONDO, UBERON){
   
   example4$Mod_ID <- paste(example4$Dataset, example4$Network, 
                            example4$Module, example4$Mod_Def)
+  
+  write.csv(example4, file=paste0("table2_example4_search_results_gene_sets.csv"), row.names=F)
   
   example4 <- example4 |> 
     dplyr::group_by(Mod_ID) |>
@@ -756,8 +756,7 @@ search_queries_table1 <- function(data_dirs, MONDO, UBERON){
   ## the following genes: BUB1, MKI67, PBK, and WEE1
 
   feature_list <- c("BUB1", "MKI67", "PBK", "WEE1")
-  feature_type <- "SYMBOL"
-  
+
   example8_list <- lapply(1:nrow(data_dirs), function(i){
     
     if(!is.na(data_dirs$FM_dir[i])){
@@ -799,7 +798,7 @@ search_queries_table1 <- function(data_dirs, MONDO, UBERON){
               tidyr::separate_rows(SYMBOL, sep=" \\| ") |>
               as.data.frame()
             
-            feature_mods <- covariation_feature_search(kME, feature_list, feature_type, mod_def="Any", and_or="OR")
+            feature_mods <- covariation_feature_search(kME, feature_list, feature_type="SYMBOL", mod_def="Any", and_or="OR")
             
             if(!is.null(feature_mods)){
               network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
@@ -845,7 +844,7 @@ search_queries_table1 <- function(data_dirs, MONDO, UBERON){
             enrich <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
             enrich_list <- lapply(enrich, covariation_enrich_search, setname="microglia")
             network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
-            return(data.frame(data_dirs$Title[i], Network=network, do.call(rbind, enrich_list)))
+            return(data.frame(Dataset=data_dirs$Title[i], Network=network, do.call(rbind, enrich_list)))
             
           }, future.seed=T) 
           
@@ -860,14 +859,16 @@ search_queries_table1 <- function(data_dirs, MONDO, UBERON){
   })
   example9 <- do.call(rbind, example9_list)
   
-  example9$Mod_ID <- paste(example9$Dataset, example9$Network, 
+  example9$Mod_ID <- paste(example9$Dataset, example9$Network,
                            example9$Module, example9$Mod_Def)
+
+  write.csv(example9, file=paste0("table1_example9_search_results_gene_sets.csv"), row.names=F)
   
-  example9 <- example9 |> 
+  example9 <- example9 |>
     dplyr::group_by(Mod_ID) |>
-    dplyr::slice_min(Pval, with_ties=T) |> 
+    dplyr::slice_min(Pval, with_ties=T) |>
     dplyr::arrange(Pval)
-  
+
   write.csv(example9, file=paste0("table1_example9_search_results.csv"), row.names=F)
   
   ############################################# Table 1, example 10 ############################################# 
@@ -1054,13 +1055,7 @@ search_queries_table1 <- function(data_dirs, MONDO, UBERON){
   example14_list <- lapply(1:nrow(data_dirs), function(i){
     
     if(!is.na(data_dirs$FM_dir[i])){
-      
-      # DS_attr <-  read.csv(list.files(path=data_dirs$SN_dir[i], pattern="DS_attributes", full.names=T)[1])
-      # unique_id <- DS_attr$Value[DS_attr$Attribute=="Unique Identifier"]
-      # if(unique_id=="ENTREZID"){
-      #   stop(i)
-      # } 
-      
+
       sampleinfo <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="sample_attributes", full.names=T)[1])
       
       if(is.element("Developmental_Epoch", colnames(sampleinfo))){ 
@@ -1114,12 +1109,10 @@ search_queries_table1 <- function(data_dirs, MONDO, UBERON){
                 
               }
               
-              kME <- kME[,!is.element(colnames(kME), "SYMBOL.y")]
-              
               kME <- kME |> 
-                tidyr::separate_rows(SYMBOL, sep=" \\| ") 
+                tidyr::separate_rows(ENTREZID, sep=" \\| ") 
               
-              return(data.frame(SYMBOL=unique(kME$SYMBOL),
+              return(data.frame(ENTREZID=unique(kME$ENTREZID),
                                 Dataset=modules$Dataset[j], Network=modules$Network[j],
                                 SetName=modules$SetName[j], Module=modules$Module[j],
                                 Mod_Def=modules$Mod_Def))
@@ -1137,18 +1130,297 @@ search_queries_table1 <- function(data_dirs, MONDO, UBERON){
     }
     
   })
-  example12 <- do.call(rbind, example12_list)
+  example14 <- do.call(rbind, example14_list)
   
-  write.csv(example12, file=paste0("table1_example12_search_results_modules.csv"), row.names=F)
+  write.csv(example14, file=paste0("table1_example14_search_results_modules.csv"), row.names=F)
   
-  example12 <- example12 |> 
+  example14 <- example14 |> 
     na_if("NA") |>
-    dplyr::filter(!is.na(SYMBOL)) |>
-    dplyr::group_by(SYMBOL) |> 
+    dplyr::filter(!is.na(ENTREZID)) |>
+    dplyr::group_by(ENTREZID) |> 
     dplyr::summarise(No.Datasets=n()) |>
     dplyr::arrange(desc(No.Datasets))
   
-  write.csv(example12, file=paste0("table1_example12_search_results.csv"), row.names=F)
+  write.csv(example14, file=paste0("table1_example14_search_results.csv"), row.names=F)
+  
+  ############################################# Table 1, example 15 ############################################# 
+  
+  ## Return a list of all unique enzymes encoded by genes from covariation modules identified 
+  ## in bulk gene expression datasets generated EXCLUSIVELY from adult human gliomas 
+  ## that were MAXIMALLY enriched with markers of T cells
+  
+  example15_list <- lapply(1:nrow(data_dirs), function(i){
+    
+    if(!is.na(data_dirs$FM_dir[i])){
+      
+      sampleinfo <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="sample_attributes", full.names=T)[1])
+      
+      if(is.element("Developmental_Epoch", colnames(sampleinfo))){ 
+        
+        glioma_samples <- get_glioma_samples(mondo_vec=sampleinfo$MONDO_ID)
+        
+        if(length(intersect(glioma_samples, grep("adult", sampleinfo$Developmental_Epoch, ignore.case=T)))==nrow(sampleinfo)){
+          
+          networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
+          networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
+          
+          networks_list <- future_lapply(1:length(networks), function(j){
+            
+            enrich <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
+            enrich_list <- lapply(enrich, covariation_enrich_search, setname="t_cell")
+            enrich_out <- do.call(rbind, enrich_list)
+            if(nrow(enrich_out)>0){
+              DS_attr <- list.files(path=data_dirs$SN_dir[i], pattern="DS_attributes", full.names=T)[1]
+              network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
+              return(data.frame(Dataset=data_dirs$Title[i], Network=network, enrich_out, 
+                                DS_Attr=DS_attr))
+            }
+            
+          }, future.seed=T)
+          modules <- do.call(rbind, networks_list)
+          
+          if(nrow(modules)>0){
+            
+            modules <- modules |> dplyr::slice_min(Pval, with_ties=T)
+            
+            ## Get module genes
+            
+            gene_list <- lapply(1:nrow(modules), function(j){
+              
+              kME <- fread(list.files(path=file.path(data_dirs$FM_dir[i], modules$Network[j]), 
+                                      pattern="kME", full.names=T), data.table=F)
+              col <- kME[,grep(toupper(modules$Mod_Def[j]), toupper(colnames(kME)))]
+              kME <- kME[is.element(col, as.character(modules$Module[j])),]
+              
+              ## Map identifiers to SYMBOL:
+              
+              DS_attr <- read.csv(modules$DS_Attr[j])
+              unique_id <- DS_attr$Value[DS_attr$Attribute=="Unique Identifier"]
+              platform <- DS_attr$Value[DS_attr$Attribute=="Mapping Tables"]
+              
+              kME <- map2Any(features=kME, unique_id, map_to="ENZYME", 
+                             unique_id_col=2, platform, tables_dir, 
+                             keep_all=T)
+              
+              kME <- kME |> 
+                tidyr::separate_rows(ENZYME, sep=" \\| ") 
+              
+              return(data.frame(ENZYME=unique(kME$ENZYME),
+                                Dataset=modules$Dataset[j], Network=modules$Network[j],
+                                SetName=modules$SetName[j], Module=modules$Module[j],
+                                Mod_Def=modules$Mod_Def))
+              
+            })
+            
+            return(do.call(rbind, gene_list))
+            
+          } 
+          
+        } 
+        
+      } 
+      
+    }
+    
+  })
+  example15 <- do.call(rbind, example15_list)
+  
+  write.csv(example15, file=paste0("table1_example15_search_results_modules.csv"), row.names=F)
+  
+  example15 <- example15 |> 
+    na_if("NA") |>
+    dplyr::filter(!is.na(ENZYME)) |>
+    dplyr::group_by(ENZYME) |> 
+    dplyr::summarise(No.Datasets=n()) |>
+    dplyr::arrange(desc(No.Datasets))
+  
+  write.csv(example15, file=paste0("table1_example15_search_results.csv"), row.names=F)
+  
+  ############################################# Table 1, example 16 ############################################# 
+  
+  ## Return a list of unique OMIM IDs associated with seed genes for covariation modules identified
+  ## in bulk gene expression datasets generated EXCLUSIVELY from adult human glioma samples that include
+  ## GATA1, GATA3, and AIRE as seed genes, ranked by frequency of occurrence
+  
+  feature_list <- c("GATA1", "GATA3", "AIRE")
+  
+  example16_list <- lapply(1:nrow(data_dirs), function(i){
+    
+    if(!is.na(data_dirs$FM_dir[i])){
+      
+      sampleinfo <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="sample_attributes", full.names=T)[1])
+      
+      if(is.element("Developmental_Epoch", colnames(sampleinfo))){ 
+        
+        glioma_samples <- get_glioma_samples(mondo_vec=sampleinfo$MONDO_ID)
+        
+        if(length(intersect(glioma_samples, grep("adult", sampleinfo$Developmental_Epoch, ignore.case=T)))==nrow(sampleinfo)){
+          
+          networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
+          networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
+          
+          DS_attr <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="DS_attributes", full.names=T)[1])
+          unique_id <- DS_attr$Value[DS_attr$Attribute=="Unique Identifier"]
+          platform <- DS_attr$Value[DS_attr$Attribute=="Mapping Tables"]
+          
+          networks_list <- future_lapply(1:length(networks), function(j){
+            
+            kME <- fread(list.files(path=networks[j], pattern="kME", full.names=T), data.table=F)
+            
+            ## Map to SYMBOL to find modules that contain features from feature list:
+            
+            if(unique_id=="SYMBOL"){
+              
+              kME1 <- mapAlias2Symbol(features=kME, unique_id_col=2, 
+                                      tables_dir, keep_all=T, fill_NAs=T)
+              
+            } else {
+              
+              kME1 <- map2Any(features=kME, unique_id, map_to="SYMBOL",
+                              unique_id_col=2, platform, tables_dir, 
+                              keep_all=T)
+              
+            }
+            
+            ## Get names of modules:
+            
+            feature_mods <- mod2list(kME1, feature_type="SYMBOL", feature_list, mod_def="Seed", and_or="AND")
+            
+            if(length(feature_mods)>0){
+              
+              ## Get unique identifiers from matching modules and map to OMIM:
+              
+              mod_col <- grep(mod_def, colnames(kME))
+              kME <- kME[is.element(kME[,mod_col], names(feature_mods)),]
+              kME <- map2Any(features=kME, unique_id, map_to="OMIM", 
+                             unique_id_col=2, platform, tables_dir, 
+                             keep_all=T)
+              kME <- kME |> na_if("NA") |> na_if("") |>
+                tidyr::separate_rows(OMIM, sep=" \\| ") |>
+                dplyr::filter(!is.na(OMIM)) |>
+                as.data.frame()
+              
+              if(nrow(kME)>0){
+                
+                kME <- kME |>
+                  dplyr::select(
+                    UNIQUE.ID, OMIM, 
+                    !!sym(colnames(kME)[grep(mod_def, colnames(kME))])
+                  )
+                
+                colnames(kME)[grep("Mod", colnames(kME))] <- "Module"
+                network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
+                return(data.frame(Dataset=data_dirs$Title[i], Network=network, 
+                                  kME, Mod_Def="Seed"))
+                
+              }
+              
+            }
+            
+          }, future.seed=T) 
+          
+          return(do.call(rbind, networks_list))
+          
+        }
+        
+      }
+      
+    } 
+    
+  })
+  example16 <- do.call(rbind, example16_list)
+  
+  if(nrow(example16)>0){
+    
+    write.csv(example16, file=paste0("table1_example16_search_results_modules.csv"), row.names=F)
+    
+    example16 <- example16 |> 
+      na_if("NA") |>
+      dplyr::filter(!is.na(OMIM)) |>
+      dplyr::group_by(OMIM) |> 
+      dplyr::summarise(No.Datasets=n()) |>
+      dplyr::arrange(desc(No.Datasets))
+    
+    write.csv(example16, file=paste0("table1_example16_search_results.csv"), row.names=F)
+    
+   
+  } else {
+    "No results found for example query 16."
+  }
+  
+  ############################################# Table 1, example 18 ############################################# 
+  
+  ## Find all covariation modules for which >= 1% of seed genes belong to the Gene Ontology Biological Processs
+  ## 'oxidative phosphorylation' (GO:0006119), ranked by percent match
+  
+  feature_list <- c("GO:0006119")
+  
+  example18_list <- lapply(1:nrow(data_dirs), function(i){
+    
+    if(!is.na(data_dirs$FM_dir[i])){
+      
+      networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
+      networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
+      
+      DS_attr <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="DS_attributes", full.names=T)[1])
+      unique_id <- DS_attr$Value[DS_attr$Attribute=="Unique Identifier"]
+      platform <- DS_attr$Value[DS_attr$Attribute=="Mapping Tables"]
+      
+      networks_list <- future_lapply(1:length(networks), function(j){
+        
+        kME <- fread(list.files(path=networks[j], pattern="kME", full.names=T), data.table=F)
+        
+        ## Get # of features in each module prior to mapping:
+        
+        kME <- kME[kME$ModSeed!="",]
+        mod_lengths <- table(kME$ModSeed)
+        
+        ## Map to GO terms to find modules that contain features from feature list:
+        
+        kME <- map2Any(features=kME, unique_id, map_to="GO",
+                       unique_id_col=2, platform, tables_dir, 
+                       keep_all=T)
+        kME <- kME |> 
+          tidyr::separate_rows(GO, sep=" \\| ") 
+        
+        ## Calculate fraction of module seed genes that are associated with GO term:
+        
+        GO_mods <- tapply(kME$GO, kME$ModSeed, "[")
+        mod_lengths <- mod_lengths[match(names(GO_mods), names(mod_lengths))]
+        GO_percent <- unlist(lapply(1:length(GO_mods), function(k){
+          sum(is.element(GO_mods[[k]], feature_list))/mod_lengths[k]*100
+        }))
+        GO_percent <- GO_percent[GO_percent>=1]
+        
+        if(length(GO_percent)>0){
+          
+          network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
+          return(data.frame(Dataset=data_dirs$Title[i], Network=network, 
+                            Module=names(GO_percent), Mod_Def="Seed", 
+                            Percent=GO_percent))
+          
+        }
+        
+      }, future.seed=T) 
+      
+      return(do.call(rbind, networks_list))
+      
+    } 
+    
+  })
+  example18 <- do.call(rbind, example18_list)
+  
+  example18 <- example18 |>
+    dplyr::arrange(desc(Percent))
+  
+  write.csv(example18, file=paste0("table1_example18_search_results.csv"), row.names=F)
+  
+  ############################################# Table 1, example 18 ############################################# 
+  
+  ## Find all unique gene sets associated with human neuronal cell types that were significantly enriched 
+  ## (P < 1e-10) in covariation modules derived from adult human glioma samples analyzed by RNA-seq
+  
+  
   
 }
 
@@ -1179,28 +1451,42 @@ covariation_enrich_search <- function(enrich, setname, pval_cut=.05){
 }
 
 covariation_feature_search <- function(kME, feature_list, feature_type, 
-                                       mod_def=c("Any", "BC", "FDR"), 
+                                       mod_def=c("BC", "FDR", "Seed"), 
                                        and_or="AND"){
   
-  modbc <- mod2list(kME, feature_type, feature_list, mod_def="BC", and_or)
-  modfdr <- mod2list(kME, feature_type, feature_list, mod_def="FDR", and_or)
-  modseed <- mod2list(kME, feature_type, feature_list, mod_def="Seed", and_or)
-  
-  if(sum(c(length(modbc), length(modfdr), length(modseed)))>0){
-    modules <- c(names(modbc), names(modfdr), names(modseed))
-    mod_def <- c(rep("Bonferroni", length(modbc)), 
-                 rep("FDR", length(modfdr)), 
-                 rep("Seed", length(modseed)))
-    return(data.frame(Module=modules, Mod_Def=mod_def))
+  if(mod_def=="Any"){
+
+    modbc <- mod2list(kME, feature_type, feature_list, mod_def="BC", and_or)
+    modfdr <- mod2list(kME, feature_type, feature_list, mod_def="FDR", and_or)
+    modseed <- mod2list(kME, feature_type, feature_list, mod_def="Seed", and_or)
+
+    if(sum(length(modbc), length(modfdr), length(modseed))>0){
+      modules <- c(names(modbc), names(modfdr), names(modseed))
+      mod_def <- c(rep("Bonferroni", length(modbc)),
+                   rep("FDR", length(modfdr)),
+                   rep("Seed", length(modseed)))
+      return(data.frame(Module=modules,
+                        Mod_Def=mod_def))
+    }
+
+  } else {
+
+    modules <- mod2list(kME, feature_type, feature_list, mod_def, and_or)
+    if(length(modules)>0){
+      return(data.frame(Module=names(modules), Mod_Def=mod_def))
+    }
+
   }
-  
+
 }
 
 mod2list <- function(kME, feature_type, feature_list=NULL, 
                      mod_def=c("BC", "FDR", "Seed"), 
                      and_or=c("AND", "OR")){
   
-  module_list <- tapply(kME[,feature_type], kME[,grep(mod_def, colnames(kME))], "[")
+  mod_col <- grep(mod_def, colnames(kME))
+  kME <- kME[kME[,mod_col]!="",]
+  module_list <- tapply(kME[,feature_type], kME[,mod_col], "[")
   module_list <- lapply(module_list, na.omit)
   
   if(!is.null(feature_list)){
