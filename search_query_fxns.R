@@ -10,7 +10,7 @@ plan(multicore, workers=10)
 
 source("/home/rebecca/code/misc/map_identifiers/map_identifiers_function.R")
 
-## Test: table 2 example 1
+## Test: table 1 example 6
 
 search_queries_table2 <- function(data_dirs, MONDO, UBERON){
   
@@ -41,7 +41,7 @@ search_queries_table2 <- function(data_dirs, MONDO, UBERON){
   
   ############################################# Table 2, example 2 ############################################# 
   
-  ## Find all covariation networks from human samples without disease where min module size >= 10 and # modules ≥ 50
+  ## Find all covariation networks from human samples without disease where minimum module size >= 10 and # modules ≥ 50
   
   example2_list <- lapply(1:nrow(data_dirs), function(i){
     
@@ -177,10 +177,10 @@ search_queries_table2 <- function(data_dirs, MONDO, UBERON){
           
           networks_list <- future_lapply(1:length(networks), function(j){
             
-            enrich <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
-            enrich_list <- lapply(enrich, covariation_enrich_search, setname="microglia")
+            enrich_ <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
+            enrich_out <- covariation_enrich_search(enrich, setname="microglia")
             network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
-            return(data.frame(Dataset=data_dirs$Title[i], Network=network, do.call(rbind, enrich_list)))
+            return(data.frame(Dataset=data_dirs$Title[i], Network=network, enrich_out))
             
           }, future.seed=T) 
           
@@ -196,12 +196,16 @@ search_queries_table2 <- function(data_dirs, MONDO, UBERON){
   example4$Mod_ID <- paste(example4$Dataset, example4$Network, 
                            example4$Module, example4$Mod_Def)
   
-  write.csv(example4, file=paste0("table2_example4_search_results_gene_sets.csv"), row.names=F)
-  
   example4 <- example4 |> 
     dplyr::group_by(Mod_ID) |>
     dplyr::slice_min(Pval, with_ties=T) |> 
     dplyr::arrange(Pval)
+  
+  write.csv(example4, file=paste0("table2_example4_search_results_gene_sets.csv"), row.names=F)
+  
+  example4 <- example4 |> 
+    dplyr::group_by(Mod_ID) |>
+    dplyr::slice_min(Pval, with_ties=F)
 
   write.csv(example4, file=paste0("table2_example4_search_results.csv"), row.names=F)
   
@@ -231,8 +235,7 @@ search_queries_table2 <- function(data_dirs, MONDO, UBERON){
           networks_list <- future_lapply(1:length(networks), function(j){
 
             enrich <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
-            enrich_list <- lapply(enrich, covariation_enrich_search, setname="radial_glia")
-            enrich_out <- do.call(rbind, enrich_list)
+            enrich_out <- covariation_enrich_search(enrich, setname="radial_glia")
             if(nrow(enrich_out)>0){
               DS_attr <- list.files(path=data_dirs$SN_dir[i], pattern="DS_attributes", full.names=T)[1]
               network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
@@ -319,8 +322,6 @@ search_queries_table1 <- function(data_dirs, MONDO, UBERON){
   
   ## Find all RNA-seq datasets with at least 100 samples from adult human gliomas that contain the gene MALAT1
 
-  data_dirs <- read.csv("/home/rebecca/omicon/advanced_search/data_directory_glioma_2023-02-21.csv") %>% na_if("")
-  
   DS_dirs <- na.omit(c(unique(data_dirs$SN_dir), unique(data_dirs$DC_dir)))
   
   example1_list <- lapply(1:length(DS_dirs), function(i){
@@ -487,6 +488,8 @@ search_queries_table1 <- function(data_dirs, MONDO, UBERON){
   })
   example1 <- unique(do.call(c, example1_list))
   
+  print("Table 1 example 1 complete.")
+  
   write.csv(example1, file=paste0("table1_example1_search_results.csv"), row.names=F)
   
   ############################################# Table 1, example 2 ############################################# 
@@ -522,7 +525,7 @@ search_queries_table1 <- function(data_dirs, MONDO, UBERON){
         DS_samples <- lapply(1:length(DS_dirs), function(j){
           DS_sampleinfo <- fread(list.files(path=DS_dirs[j], pattern="sample_attributes", full.names=T), data.table=F)
           return(data.frame(Label=DS_sampleinfo$Label, Technology=techs[j],
-                            UBERON_ID=DS_sampleinfo$UBERON_ID))
+                            Tissue=DS_sampleinfo$Tissue, UBERON_ID=DS_sampleinfo$UBERON_ID))
         })
         
         samples <- do.call(rbind, DS_samples)
@@ -539,11 +542,13 @@ search_queries_table1 <- function(data_dirs, MONDO, UBERON){
             Technology=paste(sort(unique(Technology)), collapse=", ")
           )
         
-        if(sum(grepl("Microarray, Sequencer", samples$Technology))>0){
+        nsamples <- sum(grepl("Microarray, Sequencer", samples$Technology))
+        
+        if(nsamples>0){
           
           DC_attr <- read.csv(list.files(path=DC_dirs[i], pattern="DC_attributes", full.names=T))
           data_collection <- paste(DC_attr$Value[DC_attr$Attribute=="Title"])
-          return(data.frame(Data_Collection=data_collection))
+          return(data.frame(Data_Collection=data_collection, No.Samples=nsamples))
           
         }
         
@@ -553,6 +558,8 @@ search_queries_table1 <- function(data_dirs, MONDO, UBERON){
     
   })
   example2 <- do.call(rbind, example2_list)
+  
+  print("Table 1 example 2 complete.")
   
   write.csv(example2, file=paste0("table1_example2_search_results.csv"), row.names=F)
   
@@ -570,7 +577,7 @@ search_queries_table1 <- function(data_dirs, MONDO, UBERON){
     sampleinfo <- fread(list.files(path=DC_dirs[i], pattern="sample_attributes", 
                                    full.names=T), data.table=F)
     
-    if(is.element("Developmental_Epoch", colnames(sampleinfo))){
+    if(is.element("Developmental_Epoch", colnames(sampleinfo)) & is.element("Tumor_Grade", colnames(sampleinfo))){
       
       glioma_samples <- get_glioma_samples(mondo_vec=sampleinfo$MONDO_ID)
       
@@ -842,9 +849,9 @@ search_queries_table1 <- function(data_dirs, MONDO, UBERON){
           networks_list <- future_lapply(1:length(networks), function(j){
             
             enrich <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
-            enrich_list <- lapply(enrich, covariation_enrich_search, setname="microglia")
+            enrich_out <- covariation_enrich_search(enrich, setname="microglia")
             network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
-            return(data.frame(Dataset=data_dirs$Title[i], Network=network, do.call(rbind, enrich_list)))
+            return(data.frame(Dataset=data_dirs$Title[i], Network=network, enrich_out))
             
           }, future.seed=T) 
           
@@ -862,12 +869,16 @@ search_queries_table1 <- function(data_dirs, MONDO, UBERON){
   example9$Mod_ID <- paste(example9$Dataset, example9$Network,
                            example9$Module, example9$Mod_Def)
 
-  write.csv(example9, file=paste0("table1_example9_search_results_gene_sets.csv"), row.names=F)
-  
   example9 <- example9 |>
     dplyr::group_by(Mod_ID) |>
     dplyr::slice_min(Pval, with_ties=T) |>
     dplyr::arrange(Pval)
+  
+  write.csv(example9, file=paste0("table1_example9_search_results_gene_sets.csv"), row.names=F)
+  
+  example9 <- example9 |>
+    dplyr::group_by(Mod_ID) |>
+    dplyr::slice_min(Pval, with_ties=F)
 
   write.csv(example9, file=paste0("table1_example9_search_results.csv"), row.names=F)
   
@@ -931,6 +942,58 @@ search_queries_table1 <- function(data_dirs, MONDO, UBERON){
   ## Find all Gene Set Enrichment Results (.pdf) for Covariation Networks produced from adult human glioma 
   ## samples using the top 1% or higher of biweight midcorrelations and a minimum module size ≥ 20
   
+  example11_list <- lapply(1:nrow(data_dirs), function(i){
+
+    if(!is.na(data_dirs$FM_dir[i])){
+      
+      sampleinfo <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="sample_attributes", full.names=T)[1])
+      
+      if(is.element("Developmental_Epoch", colnames(sampleinfo))){
+        
+        glioma_samples <- get_glioma_samples(mondo_vec=sampleinfo$MONDO_ID)
+        
+        if(length(intersect(glioma_samples, grep("adult", sampleinfo$Developmental_Epoch, ignore.case=T)))>0){
+          
+          ## Identify networks with relsig >= .99 & min size >= 20:
+          
+          netstats <- read.csv(list.files(path=data_dirs$FM_dir[i], pattern="network_statistics", full.names=T))
+          netstats <- netstats[,intersect(which(netstats[netstats$Network=="RelSignum",]>=.99), 
+                                          which(netstats[netstats$Network=="MinSize",]>=20))]
+          
+          networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum")
+          networks <- networks[is.element(make.names(networks), colnames(netstats))]
+          networks <- file.path(data_dirs$FM_dir[i], networks)
+          
+          ## Get signifcantly enriched gene sets:
+          
+          networks_list <- future_lapply(1:length(networks), function(j){
+            
+            pdf_files <- list.files(path=networks[j], pattern="enrichment.*pdf", 
+                                    full.names=T, recursive=T)
+            
+            if(length(pdf_files)>0){
+              pdf_files <- sapply(strsplit(pdf_files, "/"), function(x) x[length(x)])
+              network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
+              return(data.frame(Dataset=data_dirs$Title[i], 
+                                Network=network, 
+                                PDF=pdf_files))
+            }
+            
+          }, future.seed=T) 
+          
+          return(do.call(rbind, networks_list))
+          
+        }
+        
+      }
+      
+    } 
+    
+  })
+  example11 <- do.call(rbind, example11_list)
+  
+  write.csv(example11, file=paste0("table1_example11_search_results.csv"), row.names=F)
+  
   ############################################# Table 1, example 12 ############################################# 
   
   ## Export a list of unique gene symbols for covariation modules identified in bulk RNA-seq datasets 
@@ -960,8 +1023,7 @@ search_queries_table1 <- function(data_dirs, MONDO, UBERON){
             networks_list <- future_lapply(1:length(networks), function(j){
               
               enrich <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
-              enrich_list <- lapply(enrich, covariation_enrich_search, setname="radial_glia")
-              enrich_out <- do.call(rbind, enrich_list)
+              enrich_out <- covariation_enrich_search(enrich, setname="radial_glia")
               if(nrow(enrich_out)>0){
                 DS_attr <- list.files(path=data_dirs$SN_dir[i], pattern="DS_attributes", full.names=T)[1]
                 network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
@@ -1042,11 +1104,6 @@ search_queries_table1 <- function(data_dirs, MONDO, UBERON){
   
   write.csv(example12, file=paste0("table1_example12_search_results.csv"), row.names=F)
   
-  ############################################# Table 1, example 13 ############################################# 
-  
-  ## Download complete kME table for a covariation network produced from GSE15824 using the top .01% 
-  ## of biweight midcorrelations and a minimum module size of 8
-  
   ############################################# Table 1, example 14 ############################################# 
   
   ## Find all unique human Entrez IDs for covariation modules generated EXCLUSIVELY from adult human gliomas 
@@ -1070,8 +1127,7 @@ search_queries_table1 <- function(data_dirs, MONDO, UBERON){
           networks_list <- future_lapply(1:length(networks), function(j){
             
             enrich <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
-            enrich_list <- lapply(enrich, covariation_enrich_search, setname="OPC")
-            enrich_out <- do.call(rbind, enrich_list)
+            enrich_out <- covariation_enrich_search(enrich, setname="OPC")
             if(nrow(enrich_out)>0){
               DS_attr <- list.files(path=data_dirs$SN_dir[i], pattern="DS_attributes", full.names=T)[1]
               network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
@@ -1167,8 +1223,8 @@ search_queries_table1 <- function(data_dirs, MONDO, UBERON){
           networks_list <- future_lapply(1:length(networks), function(j){
             
             enrich <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
-            enrich_list <- lapply(enrich, covariation_enrich_search, setname="t_cell")
-            enrich_out <- do.call(rbind, enrich_list)
+            print(paste(i, j))
+            enrich_out <- covariation_enrich_search(enrich, setname="t_cell")
             if(nrow(enrich_out)>0){
               DS_attr <- list.files(path=data_dirs$SN_dir[i], pattern="DS_attributes", full.names=T)[1]
               network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
@@ -1415,22 +1471,138 @@ search_queries_table1 <- function(data_dirs, MONDO, UBERON){
   
   write.csv(example18, file=paste0("table1_example18_search_results.csv"), row.names=F)
   
-  ############################################# Table 1, example 18 ############################################# 
+  ############################################# Table 1, example 19 ############################################# 
   
   ## Find all unique gene sets associated with human neuronal cell types that were significantly enriched 
   ## (P < 1e-10) in covariation modules derived from adult human glioma samples analyzed by RNA-seq
   
+  example19_list <- lapply(1:nrow(data_dirs), function(i){
+    
+    if(!is.na(data_dirs$FM_dir[i])){
+      
+      DS_attr <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="DS_attributes", full.names=T)[1])
+      
+      if(DS_attr$Value[DS_attr$Attribute=="Technology"]=="Sequencer"){
+        
+        sampleinfo <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="sample_attributes", full.names=T)[1])
+        
+        if(is.element("Developmental_Epoch", colnames(sampleinfo))){
+          
+          glioma_samples <- get_glioma_samples(mondo_vec=sampleinfo$MONDO_ID)
+          
+          if(length(intersect(glioma_samples, grep("adult", sampleinfo$Developmental_Epoch, ignore.case=T)))>0){
+            
+            networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
+            networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
+            
+            networks_list <- future_lapply(1:length(networks), function(j){
+              
+              enrich <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
+              enrich_out <- covariation_enrich_search(enrich, setname="microglia", pval_cut=1e-10)
+              enrich_out <- enrich_out |>
+                dplyr::group_by(SetID, SetName) |>
+                dplyr::slice_min(Pval, with_ties=F)
+              colnames(enrich_out)[grep("Pval", colnames(enrich_out))] <- "Min_Pval"
+              network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
+              return(data.frame(Dataset=data_dirs$Title[i], Network=network, enrich_out))
+              
+            }, future.seed=T) 
+            
+            return(do.call(rbind, networks_list))
+            
+          }
+          
+        }
+        
+      }
+      
+    } 
+    
+  })
+  example19 <- do.call(rbind, example19_list)
   
+  write.csv(example19, file=paste0("table1_example19_search_results_modules.csv"), row.names=F)
+  
+  example19 <- example19 |> 
+    dplyr::group_by(SetID, SetName) |> 
+    dplyr::summarise(No.Datasets=n()) |>
+    dplyr::arrange(desc(No.Datasets))
+  
+  write.csv(example19, file=paste0("table1_example19_search_results.csv"), row.names=F)
+  
+  ############################################# Table 1, example 20 ############################################# 
+  
+  ## Find all gene sets that were significantly enriched (P < 1e-10) in covariation modules derived from the top 1% 
+  ## of pairwise cors with a minimum module size >= 12 in RNA-seq datasets produced with at least 10% grade 2 oligodendrogliomas
+  
+  example20_list <- lapply(1:nrow(data_dirs), function(i){
+    
+    if(!is.na(data_dirs$FM_dir[i])){
+      
+      DS_attr <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="DS_attributes", full.names=T)[1])
+      
+      if(DS_attr$Value[DS_attr$Attribute=="Technology"]=="Sequencer"){
+        
+        sampleinfo <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="sample_attributes", full.names=T)[1])
+        
+        if(is.element("Tumor_Grade", colnames(sampleinfo))){
+          
+          if(length(intersect(which(sampleinfo$Tumor_Grade>=2)), 
+                    grep("oligodendroglioma", sampleinfo$Disease))>=.1*nrow(sampleinfo)){
+            
+            ## Identify networks with relsig >= .99 & min size >= 12:
+            
+            netstats <- read.csv(list.files(path=data_dirs$FM_dir[i], pattern="network_statistics", full.names=T))
+            netstats <- netstats[,intersect(which(netstats[netstats$Network=="RelSignum",]>=.99), 
+                                            which(netstats[netstats$Network=="MinSize",]>=12))]
+            
+            networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum")
+            networks <- networks[is.element(make.names(networks), colnames(netstats))]
+            networks <- file.path(data_dirs$FM_dir[i], networks)
+            
+            ## Get signifcantly enriched gene sets:
+            
+            networks_list <- future_lapply(1:length(networks), function(j){
+              
+              enrich <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
+              enrich_out <- covariation_enrich_search(enrich, setname=NULL, pval_cut=1e-10)
+              network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
+              return(data.frame(Dataset=data_dirs$Title[i], Network=network, enrich_out))
+              
+            }, future.seed=T) 
+            
+            return(do.call(rbind, networks_list))
+            
+          }
+          
+        }
+        
+      }
+      
+    } 
+    
+  })
+  example20 <- do.call(rbind, example20_list)
+  
+  write.csv(example20, file=paste0("table1_example20_search_results_modules.csv"), row.names=F)
+  
+  example20 <- example20 |> 
+    dplyr::group_by(SetID, SetName) |> 
+    dplyr::slice_min(Pval, with_ties=F)
+  
+  write.csv(example20, file=paste0("table1_example20_search_results.csv"), row.names=F)
   
 }
 
-covariation_enrich_search <- function(enrich, setname, pval_cut=.05){
+covariation_enrich_search <- function(enrich, setname=NULL, pval_cut=.05){
   
   enrich_list <- lapply(1:length(enrich), function(j){
     
     enrich_pvals <- fread(list.files(path=enrich[j], pattern=".csv", full.names=T), data.table=F)
-    enrich_pvals <- enrich_pvals[grep(setname, enrich_pvals$SetName, ignore.case=T),]
-    
+    if(!is.null(setname)){
+      enrich_pvals <- enrich_pvals[grep(setname, enrich_pvals$SetName, ignore.case=T),]
+    }
+
     if(nrow(enrich_pvals)>0){
       
       temp <- reshape2::melt(enrich_pvals[,c(1,8:ncol(enrich_pvals))])
@@ -1508,19 +1680,36 @@ mod2list <- function(kME, feature_type, feature_list=NULL,
 }
 
 get_brain_samples <- function(uberon_vec){
+  
+  ## Iterate to get ALL children of 'brain':
+
   id <- UBERON$id[UBERON$name=="brain"]
-  sapply(1:length(uberon_vec), function(i){
-    parents <- get_ancestors(UBERON, terms=uberon_vec[i])
-    if(sum(is.element(parents, id))>0) return(i)
-  })
+  brain_children_current <- unlist(UBERON$children[names(UBERON$children)==id], use.names=F) 
+  brain_children_previous <- c()
+  while(length(brain_children_previous)<length(brain_children_current)){
+    brain_children_previous <- brain_children_current
+    brain_children_current <- unlist(
+      UBERON$children[is.element(names(UBERON$children), brain_children_previous)], 
+      use.names=F
+    )
+  }
+  brain_children <- c(brain_children_previous, id)
+  
+  uberon_vec[is.na(uberon_vec)] <- "NA"
+  unlist(sapply(1:length(uberon_vec), function(i){
+    if(sum(is.element(brain_children, uberon_vec[i]))>0) 
+      return(i)
+  }))
+  
 }
 
 get_glioma_samples <- function(mondo_vec){
-  sapply(1:length(mondo_vec), function(i){
+  mondo_vec[is.na(mondo_vec)] <- "NA"
+  id <- MONDO$id[MONDO$name=="glioma"]
+  unlist(sapply(1:length(mondo_vec), function(i){
     parents <- get_ancestors(MONDO, terms=mondo_vec[i])
-    id <- MONDO$id[MONDO$name=="glioma"]
     if(sum(is.element(parents, id))>0) return(i)
-  })
+  }))
 }
 
 make_data_directory <- function(root_dir){
