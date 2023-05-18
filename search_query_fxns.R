@@ -12,6 +12,14 @@ source("/home/rebecca/code/misc/map_identifiers/map_identifiers_function.R")
 
 search_queries_sheet2 <- function(data_dirs, MONDO, UBERON){
   
+  sheet2_queries <- data.frame(Query.No=1:5, 
+                               Query=c("Find all human brain samples with any kind of disease (disease DOES NOT EQUAL Normal)",
+                                       "Find all covariation networks from human samples without disease where minimum module size >= 10 and # modules ≥ 50",
+                                       "Find all covariation modules in datasets consisting SOLELY of normal adult human samples that contain the following genes: BUB1, MKI67, PBK, and WEE1",
+                                       "Find all covariation modules in datasets consisting SOLELY of human normal brain samples that are significantly enriched with microglial markers",
+                                       "Export a list of unique gene symbols for covariation modules identified in datasets that include normal adult male brain samples and are maximally enriched with markers of radial glia (cell type)"),
+                               RE_Count=NA)
+  
   ############################################# Sheet 2, example 1 ############################################# 
   
   print("Starting sheet 2 example 1.")
@@ -41,6 +49,8 @@ search_queries_sheet2 <- function(data_dirs, MONDO, UBERON){
   
   write.csv(example1, file=paste0("sheet2_example1_search_results_", Sys.Date(), ".csv"), row.names=F)
 
+  sheet2_queries$RE_Count[1] <- nrow(example1)
+  
   ############################################# Sheet 2, example 2 ############################################# 
   
   print("Starting sheet 2 example 2.")
@@ -87,6 +97,8 @@ search_queries_sheet2 <- function(data_dirs, MONDO, UBERON){
   print("Sheet 2 example 2 complete.")
   
   write.csv(example2, file=paste0("sheet2_example2_search_results_", Sys.Date(), ".csv"), row.names=F)
+  
+  sheet2_queries$RE_Count[2] <- nrow(example2)
   
   ############################################# Sheet 2, example 3 ############################################# 
   
@@ -168,9 +180,13 @@ search_queries_sheet2 <- function(data_dirs, MONDO, UBERON){
     
     print("Sheet 2 example 3 complete.")
     write.csv(example3, file=paste0("sheet2_example3_search_results_", Sys.Date(), ".csv"), row.names=F)
+    sheet2_queries$RE_Count[3] <- nrow(example3)
     
   } else {
+    
     print("No results found for example query 3.")
+    sheet2_queries$RE_Count[3] <- 0
+    
   }
  
   ############################################# Sheet 2, example 4 ############################################# 
@@ -228,6 +244,8 @@ search_queries_sheet2 <- function(data_dirs, MONDO, UBERON){
   print("Sheet 2 example 4 complete.")
   
   write.csv(example4, file=paste0("sheet2_example4_search_results_", Sys.Date(), ".csv"), row.names=F)
+  
+  sheet2_queries$RE_Count[4] <- nrow(example4)
   
   ############################################# Sheet 2, example 5 ############################################# 
   
@@ -308,7 +326,7 @@ search_queries_sheet2 <- function(data_dirs, MONDO, UBERON){
               return(data.frame(SYMBOL=unique(kME$SYMBOL),
                                 Dataset=modules$Dataset[j], Network=modules$Network[j],
                                 SetName=modules$SetName[j], Module=modules$Module[j],
-                                Mod_Def=modules$Mod_Def))
+                                Mod_Def=modules$Mod_Def[j]))
               
             })
             
@@ -340,9 +358,34 @@ search_queries_sheet2 <- function(data_dirs, MONDO, UBERON){
   
   write.csv(example5, file=paste0("sheet2_example5_search_results_", Sys.Date(), ".csv"), row.names=F)
   
+  sheet2_queries$RE_Count[5] <- nrow(example5)
+  
+  
+  write.csv(sheet2_queries, file=paste0("sheet2_query_counts_", Sys.Date(), ".csv"))
+  
 }
 
 search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
+  
+  sheet1_queries <- data.frame(Query.No=c(1:2, 4:12, 14:16, 18:20), 
+                               Query=c("Find all RNA-seq datasets with at least 100 samples from adult human gliomas that contain the gene MALAT1",
+                                       "Find all data collections that include paired RNA-seq and microarray datasets from the same human brain samples, with sample size ≥ 100",
+                                       "Find all adult human malignant glioma samples with deleterious mutations in IDH1",
+                                       "Find all adult human oligodendroglioma samples with deletion of chr1p OR chr19q AND no mutation in IDH1",
+                                       "Find all Analyses involving FM by Rebecca that have been created since 4/1/21",
+                                       "Find all covariation networks from human gliomas on Affymetrix U133A microarrays where min module size >= 10 and # modules >= 50",
+                                       "Find all covariation modules in datasets consisting SOLELY of adult human glioma samples that contain the following genes: BUB1, MKI67, PBK, and WEE1",
+                                       "Find all covariation modules in datasets consisting SOLELY of adult human oligodendroglioma samples that are significantly enriched with microglial markers",
+                                       "Find all Analyte Data files generated EXCLUSIVELY from adult human glioma samples by RNA-seq that were used as input for covariation analysis by FindModules",
+                                       "Find all Gene Set Enrichment Results (.pdf) for Covariation Networks produced from adult human glioma samples using the top 1% or higher of biweight midcorrelations and a minimum module size ≥ 20",
+                                       "Export a list of unique gene symbols for covariation modules identified in bulk RNA-seq datasets that include adult human male gliomas and are maximally enriched with markers of radial glia (cell type)",
+                                       "Find all unique human Entrez IDs for covariation modules generated EXCLUSIVELY from adult human gliomas that were maximally enriched with markers of OPCs (cell type)",
+                                       "Return a list of all unique enzymes encoded by genes from covariation modules identified in bulk gene expression datasets generated EXCLUSIVELY from adult human gliomas that were MAXIMALLY enriched with markers of T cells",
+                                       "Return a list of unique OMIM IDs associated with seed genes for covariation modules identified in bulk gene expression datasets generated EXCLUSIVELY from adult human glioma samples that include GATA1, GATA3, and AIRE as seed genes",
+                                       "Find all covariation modules for which >= 1% of seed genes belong to the Gene Ontology Biological Processs 'oxidative phosphorylation' (GO:0006119)",
+                                       "Find all unique gene sets associated with human neuronal cell types that were significantly enriched (P < 1e-10) in covariation modules derived from adult human glioma samples analyzed by RNA-seq",
+                                       "Find all gene sets that were significantly enriched (P < 1e-10) in covariation modules derived from the top 1% of pairwise cors with a minimum module size >= 12 in RNA-seq datasets produced with at least 10% grade 2 oligodendrogliomas"),
+                               RE_Count=NA)
   
   ############################################# Sheet 1, example 1 ############################################# 
   
@@ -520,6 +563,8 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   write.csv(example1, file=paste0("sheet1_example1_search_results_", Sys.Date(), ".csv"), row.names=F)
   
+  sheet1_queries$RE_Count[1] <- nrow(example1)
+  
   ############################################# Sheet 1, example 2 ############################################# 
   
   print("Starting sheet 1 example 2.")
@@ -593,6 +638,8 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   write.csv(example2, file=paste0("sheet1_example2_search_results_", Sys.Date(), ".csv"), row.names=F)
   
+  sheet1_queries$RE_Count[2] <- nrow(example2)
+  
   ############################################# Sheet 1, example 4 ############################################# 
 
   print("Starting sheet 1 example 4.")
@@ -651,6 +698,8 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   write.csv(example4, file=paste0("sheet1_example4_search_results_", Sys.Date(), ".csv"), row.names=F)
 
+  sheet1_queries$RE_Count[3] <- nrow(example4)
+  
   ############################################# Sheet 1, example 5 ############################################# 
 
   print("Starting sheet 1 example 5.")
@@ -728,6 +777,8 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   write.csv(example5, file=paste0("sheet1_example5_search_results_", Sys.Date(), ".csv"), row.names=F)
   
+  sheet1_queries$RE_Count[4] <- nrow(example5)
+  
   ############################################# Sheet 1, example 6 ############################################# 
   
   print("Starting sheet 1 example 6.")
@@ -752,6 +803,8 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   write.csv(example6, file=paste0("sheet1_example6_search_results_", Sys.Date(), ".csv"), row.names=F)
 
+  sheet1_queries$RE_Count[5] <- nrow(example6)
+  
   ############################################# Sheet 1, example 7 ############################################# 
   
   print("Starting sheet 1 example 7.")
@@ -803,6 +856,8 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   print("Sheet 1 example 7 complete.")
   
   write.csv(example7, file=paste0("sheet1_example7_search_results_", Sys.Date(), ".csv"), row.names=F)
+  
+  sheet1_queries$RE_Count[6] <- nrow(example7)
   
   ############################################# Sheet 1, example 8 ############################################# 
 
@@ -878,6 +933,8 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   write.csv(example8, file=paste0("sheet1_example8_search_results_", Sys.Date(), ".csv"), row.names=F)
   
+  sheet1_queries$RE_Count[7] <- nrow(example8)
+  
   ############################################# Sheet 1, example 9 ############################################# 
   
   print("Starting sheet 1 example 9.")
@@ -937,6 +994,8 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   write.csv(example9, file=paste0("sheet1_example9_search_results_", Sys.Date(), ".csv"), row.names=F)
   
+  sheet1_queries$RE_Count[8] <- nrow(example9)
+  
   ############################################# Sheet 1, example 10 ############################################# 
   
   print("Starting sheet 1 example 10.")
@@ -995,6 +1054,8 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   print("Sheet 1 example 10 complete.")
   
   write.csv(example10, file=paste0("sheet1_example10_search_results_", Sys.Date(), ".csv"), row.names=F)
+  
+  sheet1_queries$RE_Count[9] <- nrow(example10)
   
   ############################################# Sheet 1, example 11 ############################################# 
   
@@ -1056,6 +1117,8 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   print("Sheet 1 example 11 complete.")
   
   write.csv(example11, file=paste0("sheet1_example11_search_results_", Sys.Date(), ".csv"), row.names=F)
+  
+  sheet1_queries$RE_Count[10] <- nrow(example11)
   
   ############################################# Sheet 1, example 12 ############################################# 
   
@@ -1171,6 +1234,8 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   write.csv(example12, file=paste0("sheet1_example12_search_results_", Sys.Date(), ".csv"), row.names=F)
   
+  sheet1_queries$RE_Count[11] <- nrow(example12)
+  
   ############################################# Sheet 1, example 14 ############################################# 
   
   print("Starting sheet 1 example 14.")
@@ -1270,6 +1335,8 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   write.csv(example14, file=paste0("sheet1_example14_search_results_", Sys.Date(), ".csv"), row.names=F)
   
+  sheet1_queries$RE_Count[12] <- nrow(example14)
+  
   ############################################# Sheet 1, example 15 ############################################# 
   
   print("Starting sheet 1 example 15.")
@@ -1367,6 +1434,8 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   print("Sheet 1 example 15 complete.")
   
   write.csv(example15, file=paste0("sheet1_example15_search_results_", Sys.Date(), ".csv"), row.names=F)
+  
+  sheet1_queries$RE_Count[13] <- nrow(example15)
   
   ############################################# Sheet 1, example 16 ############################################# 
   
@@ -1479,9 +1548,11 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
     
     write.csv(example16, file=paste0("sheet1_example16_search_results_", Sys.Date(), ".csv"), row.names=F)
     
+    sheet1_queries$RE_Count[14] <- nrow(example16)
    
   } else {
     print("No results found for example query 16.")
+    sheet1_queries$RE_Count[14] <- 0
   }
   
   ############################################# Sheet 1, example 18 ############################################# 
@@ -1555,6 +1626,8 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   write.csv(example18, file=paste0("sheet1_example18_search_results_", Sys.Date(), ".csv"), row.names=F)
   
+  sheet1_queries$RE_Count[15] <- nrow(example18)
+  
   ############################################# Sheet 1, example 19 ############################################# 
   
   print("Starting sheet 1 example 19.")
@@ -1619,6 +1692,8 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   print("Sheet 1 example 19 complete.")
 
   write.csv(example19, file=paste0("sheet1_example19_search_results_", Sys.Date(), ".csv"), row.names=F)
+  
+  sheet1_queries$RE_Count[16] <- nrow(example19)
   
   ############################################# Sheet 1, example 20 ############################################# 
   
@@ -1685,6 +1760,11 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   print("Sheet 1 example 20 complete.")
   
   write.csv(example20, file=paste0("sheet1_example20_search_results_", Sys.Date(), ".csv"), row.names=F)
+  
+  sheet1_queries$RE_Count[17] <- nrow(example20)
+  
+  
+  write.csv(sheet1_queries, file=paste0("sheet1_query_counts_", Sys.Date(), ".csv"))
   
 }
 
