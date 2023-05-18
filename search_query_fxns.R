@@ -14,6 +14,8 @@ search_queries_sheet2 <- function(data_dirs, MONDO, UBERON){
   
   ############################################# Sheet 2, example 1 ############################################# 
   
+  print("Starting sheet 2 example 1.")
+  
   ## Find all human brain samples with any kind of disease (disease DOES NOT EQUAL Normal)
   
   DC_dirs <- unique(sapply(strsplit(na.omit(unique(data_dirs$DC_dir)), "/"), function(x){
@@ -35,9 +37,13 @@ search_queries_sheet2 <- function(data_dirs, MONDO, UBERON){
   })
   example1 <- do.call(rbind, example1_list)
   
-  write.csv(example1, file=paste0("sheet2_example1_search_results.csv"), row.names=F)
+  print("Sheet 2 example 1 complete.")
+  
+  write.csv(example1, file=paste0("sheet2_example1_search_results_", Sys.Date(), ".csv"), row.names=F)
 
   ############################################# Sheet 2, example 2 ############################################# 
+  
+  print("Starting sheet 2 example 2.")
   
   ## Find all covariation networks from human samples without disease where minimum module size >= 10 and # modules ≥ 50
   
@@ -78,9 +84,13 @@ search_queries_sheet2 <- function(data_dirs, MONDO, UBERON){
   })
   example2 <- do.call(rbind, example2_list)
   
-  write.csv(example2, file=paste0("sheet2_example2_search_results.csv"), row.names=F)
+  print("Sheet 2 example 2 complete.")
+  
+  write.csv(example2, file=paste0("sheet2_example2_search_results_", Sys.Date(), ".csv"), row.names=F)
   
   ############################################# Sheet 2, example 3 ############################################# 
+  
+  print("Starting sheet 2 example 3.")
   
   ## Find all covariation modules in datasets consisting SOLELY of normal adult human samples that contain 
   ## the following genes: BUB1, MKI67, PBK, and WEE1 (ranked by Jaccard index)
@@ -154,15 +164,18 @@ search_queries_sheet2 <- function(data_dirs, MONDO, UBERON){
   })
   example3 <- do.call(rbind, example3_list)
   
-  if(nrow(example3)>0){
+  if(!is.null(example3)>0){
     
-    write.csv(example3, file=paste0("sheet2_example3_search_results.csv"), row.names=F)
+    print("Sheet 2 example 3 complete.")
+    write.csv(example3, file=paste0("sheet2_example3_search_results_", Sys.Date(), ".csv"), row.names=F)
     
   } else {
     print("No results found for example query 3.")
   }
  
   ############################################# Sheet 2, example 4 ############################################# 
+  
+  print("Starting sheet 2 example 4.")
   
   ## Find all covariation modules in datasets consisting SOLELY of human normal brain samples 
   ## that are significantly enriched with microglial markers, ranked by enrichment P-values
@@ -206,15 +219,19 @@ search_queries_sheet2 <- function(data_dirs, MONDO, UBERON){
     dplyr::slice_min(Pval, with_ties=T) |> 
     dplyr::arrange(Pval)
   
-  write.csv(example4, file=paste0("sheet2_example4_search_results_gene_sets.csv"), row.names=F)
+  write.csv(example4, file=paste0("sheet2_example4_search_results_gene_sets_", Sys.Date(), ".csv"), row.names=F)
   
   example4 <- example4 |> 
     dplyr::group_by(Mod_ID) |>
     dplyr::slice_min(Pval, with_ties=F)
 
-  write.csv(example4, file=paste0("sheet2_example4_search_results.csv"), row.names=F)
+  print("Sheet 2 example 4 complete.")
+  
+  write.csv(example4, file=paste0("sheet2_example4_search_results_", Sys.Date(), ".csv"), row.names=F)
   
   ############################################# Sheet 2, example 5 ############################################# 
+  
+  print("Starting sheet 2 example 5.")
   
   ## Export a list of unique gene symbols for covariation modules identified in datasets that include normal
   ## adult male brain samples and are maximally enriched with markers of radial glia (cell type), ranked by kME / Fidelity
@@ -308,22 +325,28 @@ search_queries_sheet2 <- function(data_dirs, MONDO, UBERON){
   })
   example5 <- do.call(rbind, example5_list)
   
-  write.csv(example5, file=paste0("sheet2_example5_search_results_modules.csv"), row.names=F)
+  example5 <- example5 |>
+    na_if("NA") |>
+    dplyr::filter(!is.na(SYMBOL))
+  
+  write.csv(example5, file=paste0("sheet2_example5_search_results_modules_", Sys.Date(), ".csv"), row.names=F)
   
   example5 <- example5 |> 
-    na_if("NA") |>
-    dplyr::filter(!is.na(SYMBOL)) |>
     dplyr::group_by(SYMBOL) |> 
     dplyr::summarise(No.Datasets=n()) |>
     dplyr::arrange(desc(No.Datasets))
   
-  write.csv(example5, file=paste0("sheet2_example5_search_results.csv"), row.names=F)
+  print("Sheet 2 example 5 complete.")
+  
+  write.csv(example5, file=paste0("sheet2_example5_search_results_", Sys.Date(), ".csv"), row.names=F)
   
 }
 
 search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   ############################################# Sheet 1, example 1 ############################################# 
+  
+  print("Starting sheet 1 example 1.")
   
   ## Find all RNA-seq datasets with at least 100 samples from adult human gliomas that contain the gene MALAT1
 
@@ -491,13 +514,15 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
     }
     
   })
-  example1 <- unique(do.call(c, example1_list))
+  example1 <- data.frame(Dataset=unique(do.call(c, example1_list)))
   
   print("Sheet 1 example 1 complete.")
   
-  write.csv(example1, file=paste0("sheet1_example1_search_results.csv"), row.names=F)
+  write.csv(example1, file=paste0("sheet1_example1_search_results_", Sys.Date(), ".csv"), row.names=F)
   
   ############################################# Sheet 1, example 2 ############################################# 
+  
+  print("Starting sheet 1 example 2.")
   
   ## Find all data collections that include paired RNA-seq and microarray datasets from the same human 
   ## brain samples, with sample size ≥ 100
@@ -552,8 +577,8 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
         if(nsamples>0){
           
           DC_attr <- read.csv(list.files(path=DC_dirs[i], pattern="DC_attributes", full.names=T))
-          DC[i] <- paste(DC_attr$Value[DC_attr$Attribute=="Title"])
-          return(data.frame(Data_Collection=DC[i], No.Samples=nsamples))
+          dataset <- paste(DC_attr$Value[DC_attr$Attribute=="Title"])
+          return(data.frame(Data_Collection=dataset, No.Samples=nsamples))
           
         }
         
@@ -566,9 +591,11 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   print("Sheet 1 example 2 complete.")
   
-  write.csv(example2, file=paste0("sheet1_example2_search_results.csv"), row.names=F)
+  write.csv(example2, file=paste0("sheet1_example2_search_results_", Sys.Date(), ".csv"), row.names=F)
   
   ############################################# Sheet 1, example 4 ############################################# 
+
+  print("Starting sheet 1 example 4.")
   
   ## Find all adult human malignant glioma samples with deleterious mutations in IDH1
 
@@ -622,10 +649,12 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   print("Sheet 1 example 4 complete.")
   
-  write.csv(example4, file=paste0("sheet1_example4_search_results.csv"), row.names=F)
+  write.csv(example4, file=paste0("sheet1_example4_search_results_", Sys.Date(), ".csv"), row.names=F)
 
   ############################################# Sheet 1, example 5 ############################################# 
 
+  print("Starting sheet 1 example 5.")
+  
   ## Find all adult human oligodendroglioma samples with deletion of chr1p OR chr19q 
   ## AND no mutation in IDH1
 
@@ -697,9 +726,11 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   print("Sheet 1 example 5 complete.")
   
-  write.csv(example5, file=paste0("sheet1_example5_search_results.csv"), row.names=F)
+  write.csv(example5, file=paste0("sheet1_example5_search_results_", Sys.Date(), ".csv"), row.names=F)
   
   ############################################# Sheet 1, example 6 ############################################# 
+  
+  print("Starting sheet 1 example 6.")
   
   ## Find all Analyses involving FM by Rebecca that have been created since 4/1/21
   
@@ -719,11 +750,14 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   print("Sheet 1 example 6 complete.")
   
-  write.csv(example6, file=paste0("sheet1_example6_search_results.csv"), row.names=F)
+  write.csv(example6, file=paste0("sheet1_example6_search_results_", Sys.Date(), ".csv"), row.names=F)
 
   ############################################# Sheet 1, example 7 ############################################# 
   
-  ## Find all covariation networks from human gliomas on Affymetrix U133A microarrays where min module size >= 10 and # modules >= 50
+  print("Starting sheet 1 example 7.")
+  
+  ## Find all covariation networks from human gliomas on Affymetrix U133A microarrays where 
+  ## min module size >= 10 and # modules >= 50
   
   example7_list <- lapply(1:nrow(data_dirs), function(i){
     
@@ -768,10 +802,12 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   print("Sheet 1 example 7 complete.")
   
-  write.csv(example7, file=paste0("sheet1_example7_search_results.csv"), row.names=F)
+  write.csv(example7, file=paste0("sheet1_example7_search_results_", Sys.Date(), ".csv"), row.names=F)
   
   ############################################# Sheet 1, example 8 ############################################# 
 
+  print("Starting sheet 1 example 8.")
+  
   ## Find all covariation modules in datasets consisting SOLELY of adult human glioma samples that contain 
   ## the following genes: BUB1, MKI67, PBK, and WEE1
 
@@ -840,9 +876,11 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   print("Sheet 1 example 8 complete.")
   
-  write.csv(example8, file=paste0("sheet1_example8_search_results.csv"), row.names=F)
+  write.csv(example8, file=paste0("sheet1_example8_search_results_", Sys.Date(), ".csv"), row.names=F)
   
   ############################################# Sheet 1, example 9 ############################################# 
+  
+  print("Starting sheet 1 example 9.")
   
   ## Find all covariation modules in datasets consisting SOLELY of adult human oligodendroglioma samples that
   ## are significantly enriched with microglial markers, ranked by enrichment P-values
@@ -889,7 +927,7 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
     dplyr::slice_min(Pval, with_ties=T) |>
     dplyr::arrange(Pval)
   
-  write.csv(example9, file=paste0("sheet1_example9_search_results_gene_sets.csv"), row.names=F)
+  write.csv(example9, file=paste0("sheet1_example9_search_results_gene_sets_", Sys.Date(), ".csv"), row.names=F)
   
   example9 <- example9 |>
     dplyr::group_by(Mod_ID) |>
@@ -897,9 +935,11 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
 
   print("Sheet 1 example 9 complete.")
   
-  write.csv(example9, file=paste0("sheet1_example9_search_results.csv"), row.names=F)
+  write.csv(example9, file=paste0("sheet1_example9_search_results_", Sys.Date(), ".csv"), row.names=F)
   
   ############################################# Sheet 1, example 10 ############################################# 
+  
+  print("Starting sheet 1 example 10.")
   
   ## Find all Analyte Data files generated EXCLUSIVELY from adult human glioma samples by RNA-seq that 
   ## were used as input for covariation analysis by FindModules
@@ -954,9 +994,11 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   print("Sheet 1 example 10 complete.")
   
-  write.csv(example10, file=paste0("sheet1_example10_search_results.csv"), row.names=F)
+  write.csv(example10, file=paste0("sheet1_example10_search_results_", Sys.Date(), ".csv"), row.names=F)
   
   ############################################# Sheet 1, example 11 ############################################# 
+  
+  print("Starting sheet 1 example 11.")
   
   ## Find all Gene Set Enrichment Results (.pdf) for Covariation Networks produced from adult human glioma 
   ## samples using the top 1% or higher of biweight midcorrelations and a minimum module size ≥ 20
@@ -1013,9 +1055,11 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   print("Sheet 1 example 11 complete.")
   
-  write.csv(example11, file=paste0("sheet1_example11_search_results.csv"), row.names=F)
+  write.csv(example11, file=paste0("sheet1_example11_search_results_", Sys.Date(), ".csv"), row.names=F)
   
   ############################################# Sheet 1, example 12 ############################################# 
+  
+  print("Starting sheet 1 example 12.")
   
   ## Export a list of unique gene symbols for covariation modules identified in bulk RNA-seq datasets 
   ## that include adult human male gliomas and are maximally enriched with markers of radial glia (cell type)
@@ -1114,7 +1158,7 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   })
   example12 <- do.call(rbind, example12_list)
   
-  write.csv(example12, file=paste0("sheet1_example12_search_results_modules.csv"), row.names=F)
+  write.csv(example12, file=paste0("sheet1_example12_search_results_modules_", Sys.Date(), ".csv"), row.names=F)
   
   example12 <- example12 |> 
     na_if("NA") |>
@@ -1125,9 +1169,11 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   print("Sheet 1 example 12 complete.")
   
-  write.csv(example12, file=paste0("sheet1_example12_search_results.csv"), row.names=F)
+  write.csv(example12, file=paste0("sheet1_example12_search_results_", Sys.Date(), ".csv"), row.names=F)
   
   ############################################# Sheet 1, example 14 ############################################# 
+  
+  print("Starting sheet 1 example 14.")
   
   ## Find all unique human Entrez IDs for covariation modules generated EXCLUSIVELY from adult human gliomas 
   ## that were maximally enriched with markers of OPCs (cell type)
@@ -1211,7 +1257,7 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   })
   example14 <- do.call(rbind, example14_list)
   
-  write.csv(example14, file=paste0("sheet1_example14_search_results_modules.csv"), row.names=F)
+  write.csv(example14, file=paste0("sheet1_example14_search_results_modules_", Sys.Date(), ".csv"), row.names=F)
   
   example14 <- example14 |> 
     na_if("NA") |>
@@ -1222,9 +1268,11 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   print("Sheet 1 example 14 complete.")
   
-  write.csv(example14, file=paste0("sheet1_example14_search_results.csv"), row.names=F)
+  write.csv(example14, file=paste0("sheet1_example14_search_results_", Sys.Date(), ".csv"), row.names=F)
   
   ############################################# Sheet 1, example 15 ############################################# 
+  
+  print("Starting sheet 1 example 15.")
   
   ## Return a list of all unique enzymes encoded by genes from covariation modules identified 
   ## in bulk gene expression datasets generated EXCLUSIVELY from adult human gliomas 
@@ -1248,7 +1296,6 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
           networks_list <- future_lapply(1:length(networks), function(j){
             
             enrich <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
-            print(paste(i, j))
             enrich_out <- covariation_enrich_search(enrich, setname="t_cell")
             if(nrow(enrich_out)>0){
               DS_attr <- list.files(path=data_dirs$SN_dir[i], pattern="DS_attributes", full.names=T)[1]
@@ -1306,20 +1353,24 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   })
   example15 <- do.call(rbind, example15_list)
   
-  write.csv(example15, file=paste0("sheet1_example15_search_results_modules.csv"), row.names=F)
+  example15 <- example15 |>
+    na_if("NA") |>
+    dplyr::filter(!is.na(ENZYME))
+    
+  write.csv(example15, file=paste0("sheet1_example15_search_results_modules_", Sys.Date(), ".csv"), row.names=F)
   
   example15 <- example15 |> 
-    na_if("NA") |>
-    dplyr::filter(!is.na(ENZYME)) |>
     dplyr::group_by(ENZYME) |> 
     dplyr::summarise(No.Datasets=n()) |>
     dplyr::arrange(desc(No.Datasets))
   
   print("Sheet 1 example 15 complete.")
   
-  write.csv(example15, file=paste0("sheet1_example15_search_results.csv"), row.names=F)
+  write.csv(example15, file=paste0("sheet1_example15_search_results_", Sys.Date(), ".csv"), row.names=F)
   
   ############################################# Sheet 1, example 16 ############################################# 
+  
+  print("Starting sheet 1 example 16.")
   
   ## Return a list of unique OMIM IDs associated with seed genes for covariation modules identified
   ## in bulk gene expression datasets generated EXCLUSIVELY from adult human glioma samples that include
@@ -1413,9 +1464,9 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   })
   example16 <- do.call(rbind, example16_list)
   
-  if(nrow(example16)>0){
+  if(!is.null(example16)>0){
     
-    write.csv(example16, file=paste0("sheet1_example16_search_results_modules.csv"), row.names=F)
+    write.csv(example16, file=paste0("sheet1_example16_search_results_modules_", Sys.Date(), ".csv"), row.names=F)
     
     example16 <- example16 |> 
       na_if("NA") |>
@@ -1426,7 +1477,7 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
     
     print("Sheet 1 example 16 complete.")
     
-    write.csv(example16, file=paste0("sheet1_example16_search_results.csv"), row.names=F)
+    write.csv(example16, file=paste0("sheet1_example16_search_results_", Sys.Date(), ".csv"), row.names=F)
     
    
   } else {
@@ -1434,6 +1485,8 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   }
   
   ############################################# Sheet 1, example 18 ############################################# 
+  
+  print("Starting sheet 1 example 18.")
   
   ## Find all covariation modules for which >= 1% of seed genes belong to the Gene Ontology Biological Processs
   ## 'oxidative phosphorylation' (GO:0006119), ranked by percent match
@@ -1500,15 +1553,11 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   print("Sheet 1 example 18 complete.")
   
-  # 1661 Aubry 2015 E-MTAB-5092 RDP Tumor OR QN BC A.1.2.1.1  Bicor-None_signum0.62_minSize10_merge_ME_0.85_34582   steelblue    Seed 2.127660
-  # 1776 Aubry 2015 E-MTAB-5092 RDP Tumor OR QN BC A.1.2.1.1 Bicor-None_signum0.499_minSize20_merge_ME_0.85_34582 lightyellow    Seed 1.492537
-  # 1861 Aubry 2015 E-MTAB-5092 RDP Tumor OR QN BC A.1.2.1.1 Bicor-None_signum0.571_minSize10_merge_ME_0.85_34582    darkgrey    Seed 1.176471
-  # 1880 Aubry 2015 E-MTAB-5092 RDP Tumor OR QN BC A.1.2.1.1 Bicor-None_signum0.571_minSize12_merge_ME_0.85_34582 lightyellow    Seed 1.123596
-  # 1909 Aubry 2015 E-MTAB-5092 RDP Tumor OR QN BC A.1.2.1.1 Bicor-None_signum0.499_minSize15_merge_ME_0.85_34582     darkred    Seed 1.030928
-  
-  write.csv(example18, file=paste0("sheet1_example18_search_results.csv"), row.names=F)
+  write.csv(example18, file=paste0("sheet1_example18_search_results_", Sys.Date(), ".csv"), row.names=F)
   
   ############################################# Sheet 1, example 19 ############################################# 
+  
+  print("Starting sheet 1 example 19.")
   
   ## Find all unique gene sets associated with human neuronal cell types that were significantly enriched 
   ## (P < 1e-10) in covariation modules derived from adult human glioma samples analyzed by RNA-seq
@@ -1560,7 +1609,7 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   })
   example19 <- do.call(rbind, example19_list)
   
-  write.csv(example19, file=paste0("sheet1_example19_search_results_modules.csv"), row.names=F)
+  write.csv(example19, file=paste0("sheet1_example19_search_results_modules_", Sys.Date(), ".csv"), row.names=F)
   
   example19 <- example19 |> 
     dplyr::group_by(SetID, SetName) |>
@@ -1569,9 +1618,11 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   print("Sheet 1 example 19 complete.")
 
-  write.csv(example19, file=paste0("sheet1_example19_search_results.csv"), row.names=F)
+  write.csv(example19, file=paste0("sheet1_example19_search_results_", Sys.Date(), ".csv"), row.names=F)
   
   ############################################# Sheet 1, example 20 ############################################# 
+  
+  print("Starting sheet 1 example 20.")
   
   ## Find all gene sets that were significantly enriched (P < 1e-10) in covariation modules derived from the top 1% 
   ## of pairwise cors with a minimum module size >= 12 in RNA-seq datasets produced with at least 10% grade 2 oligodendrogliomas
@@ -1624,7 +1675,7 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   })
   example20 <- do.call(rbind, example20_list)
   
-  write.csv(example20, file=paste0("sheet1_example20_search_results_modules.csv"), row.names=F)
+  write.csv(example20, file=paste0("sheet1_example20_search_results_modules_", Sys.Date(), ".csv"), row.names=F)
   
   example20 <- example20 |> 
     dplyr::group_by(SetID, SetName) |>
@@ -1633,7 +1684,7 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   print("Sheet 1 example 20 complete.")
   
-  write.csv(example20, file=paste0("sheet1_example20_search_results.csv"), row.names=F)
+  write.csv(example20, file=paste0("sheet1_example20_search_results_", Sys.Date(), ".csv"), row.names=F)
   
 }
 
@@ -1803,7 +1854,7 @@ make_data_directory <- function(root_dir){
         
         DS_attr <- read.csv(list.files(path=DS[j], pattern="DS[0-9]+_attr", full.names=T))
         title <- paste(DS_attr$Value[DS_attr$Attribute=="Title"], DS_attr$Value[DS_attr$Attribute=="Version"])
-        return(data.frame(Title=title, DS_dir=DS[j]))
+        return(data.frame(Title=title, DC_dir=DS[j]))
         
       })
       
@@ -1866,7 +1917,7 @@ make_data_directory <- function(root_dir){
           
           FM_attr <- read.csv(list.files(path=makeFM[i], pattern="project_attributes", full.names=T))
           title <- FM_attr$Value[FM_attr$Attribute=="Input Datasets"]
-          return(c(Title=title, FM_Dir=makeFM[i]))
+          return(c(Title=title, FM_dir=makeFM[i]))
           
         })
         
