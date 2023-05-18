@@ -47,7 +47,7 @@ search_queries_sheet2 <- function(data_dirs, MONDO, UBERON){
   
   print("Sheet 2 example 1 complete.")
   
-  write.csv(example1, file=paste0("sheet2_example1_search_results_", Sys.Date(), ".csv"), row.names=F)
+  write.csv(example1, file=paste0("sheet2_example1_query_results_", Sys.Date(), ".csv"), row.names=F)
 
   sheet2_queries$RE_Count[1] <- nrow(example1)
   
@@ -96,7 +96,7 @@ search_queries_sheet2 <- function(data_dirs, MONDO, UBERON){
   
   print("Sheet 2 example 2 complete.")
   
-  write.csv(example2, file=paste0("sheet2_example2_search_results_", Sys.Date(), ".csv"), row.names=F)
+  write.csv(example2, file=paste0("sheet2_example2_query_results_", Sys.Date(), ".csv"), row.names=F)
   
   sheet2_queries$RE_Count[2] <- nrow(example2)
   
@@ -179,7 +179,7 @@ search_queries_sheet2 <- function(data_dirs, MONDO, UBERON){
   if(!is.null(example3)>0){
     
     print("Sheet 2 example 3 complete.")
-    write.csv(example3, file=paste0("sheet2_example3_search_results_", Sys.Date(), ".csv"), row.names=F)
+    write.csv(example3, file=paste0("sheet2_example3_query_results_", Sys.Date(), ".csv"), row.names=F)
     sheet2_queries$RE_Count[3] <- nrow(example3)
     
   } else {
@@ -235,7 +235,7 @@ search_queries_sheet2 <- function(data_dirs, MONDO, UBERON){
     dplyr::slice_min(Pval, with_ties=T) |> 
     dplyr::arrange(Pval)
   
-  write.csv(example4, file=paste0("sheet2_example4_search_results_gene_sets_", Sys.Date(), ".csv"), row.names=F)
+  write.csv(example4, file=paste0("sheet2_example4_query_results_gene_sets_", Sys.Date(), ".csv"), row.names=F)
   
   example4 <- example4 |> 
     dplyr::group_by(Mod_ID) |>
@@ -243,7 +243,7 @@ search_queries_sheet2 <- function(data_dirs, MONDO, UBERON){
 
   print("Sheet 2 example 4 complete.")
   
-  write.csv(example4, file=paste0("sheet2_example4_search_results_", Sys.Date(), ".csv"), row.names=F)
+  write.csv(example4, file=paste0("sheet2_example4_query_results_", Sys.Date(), ".csv"), row.names=F)
   
   sheet2_queries$RE_Count[4] <- nrow(example4)
   
@@ -347,7 +347,7 @@ search_queries_sheet2 <- function(data_dirs, MONDO, UBERON){
     na_if("NA") |>
     dplyr::filter(!is.na(SYMBOL))
   
-  write.csv(example5, file=paste0("sheet2_example5_search_results_modules_", Sys.Date(), ".csv"), row.names=F)
+  write.csv(example5, file=paste0("sheet2_example5_query_results_modules_", Sys.Date(), ".csv"), row.names=F)
   
   example5 <- example5 |> 
     dplyr::group_by(SYMBOL) |> 
@@ -356,12 +356,13 @@ search_queries_sheet2 <- function(data_dirs, MONDO, UBERON){
   
   print("Sheet 2 example 5 complete.")
   
-  write.csv(example5, file=paste0("sheet2_example5_search_results_", Sys.Date(), ".csv"), row.names=F)
+  write.csv(example5, file=paste0("sheet2_example5_query_results_", Sys.Date(), ".csv"), row.names=F)
   
   sheet2_queries$RE_Count[5] <- nrow(example5)
   
+  ############################################# Save query counts ############################################# 
   
-  write.csv(sheet2_queries, file=paste0("sheet2_query_counts_", Sys.Date(), ".csv"))
+  write.csv(sheet2_queries, file=paste0("sheet2_query_counts_", Sys.Date(), ".csv"), row.names=F)
   
 }
 
@@ -561,7 +562,7 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   print("Sheet 1 example 1 complete.")
   
-  write.csv(example1, file=paste0("sheet1_example1_search_results_", Sys.Date(), ".csv"), row.names=F)
+  write.csv(example1, file=paste0("sheet1_example1_query_results_", Sys.Date(), ".csv"), row.names=F)
   
   sheet1_queries$RE_Count[1] <- nrow(example1)
   
@@ -636,7 +637,7 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   print("Sheet 1 example 2 complete.")
   
-  write.csv(example2, file=paste0("sheet1_example2_search_results_", Sys.Date(), ".csv"), row.names=F)
+  write.csv(example2, file=paste0("sheet1_example2_query_results_", Sys.Date(), ".csv"), row.names=F)
   
   sheet1_queries$RE_Count[2] <- nrow(example2)
   
@@ -696,7 +697,7 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   print("Sheet 1 example 4 complete.")
   
-  write.csv(example4, file=paste0("sheet1_example4_search_results_", Sys.Date(), ".csv"), row.names=F)
+  write.csv(example4, file=paste0("sheet1_example4_query_results_", Sys.Date(), ".csv"), row.names=F)
 
   sheet1_queries$RE_Count[3] <- nrow(example4)
   
@@ -775,7 +776,7 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   print("Sheet 1 example 5 complete.")
   
-  write.csv(example5, file=paste0("sheet1_example5_search_results_", Sys.Date(), ".csv"), row.names=F)
+  write.csv(example5, file=paste0("sheet1_example5_query_results_", Sys.Date(), ".csv"), row.names=F)
   
   sheet1_queries$RE_Count[4] <- nrow(example5)
   
@@ -801,7 +802,7 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   print("Sheet 1 example 6 complete.")
   
-  write.csv(example6, file=paste0("sheet1_example6_search_results_", Sys.Date(), ".csv"), row.names=F)
+  write.csv(example6, file=paste0("sheet1_example6_query_results_", Sys.Date(), ".csv"), row.names=F)
 
   sheet1_queries$RE_Count[5] <- nrow(example6)
   
@@ -855,7 +856,7 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   print("Sheet 1 example 7 complete.")
   
-  write.csv(example7, file=paste0("sheet1_example7_search_results_", Sys.Date(), ".csv"), row.names=F)
+  write.csv(example7, file=paste0("sheet1_example7_query_results_", Sys.Date(), ".csv"), row.names=F)
   
   sheet1_queries$RE_Count[6] <- nrow(example7)
   
@@ -931,7 +932,7 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   print("Sheet 1 example 8 complete.")
   
-  write.csv(example8, file=paste0("sheet1_example8_search_results_", Sys.Date(), ".csv"), row.names=F)
+  write.csv(example8, file=paste0("sheet1_example8_query_results_", Sys.Date(), ".csv"), row.names=F)
   
   sheet1_queries$RE_Count[7] <- nrow(example8)
   
@@ -984,7 +985,7 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
     dplyr::slice_min(Pval, with_ties=T) |>
     dplyr::arrange(Pval)
   
-  write.csv(example9, file=paste0("sheet1_example9_search_results_gene_sets_", Sys.Date(), ".csv"), row.names=F)
+  write.csv(example9, file=paste0("sheet1_example9_query_results_gene_sets_", Sys.Date(), ".csv"), row.names=F)
   
   example9 <- example9 |>
     dplyr::group_by(Mod_ID) |>
@@ -992,7 +993,7 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
 
   print("Sheet 1 example 9 complete.")
   
-  write.csv(example9, file=paste0("sheet1_example9_search_results_", Sys.Date(), ".csv"), row.names=F)
+  write.csv(example9, file=paste0("sheet1_example9_query_results_", Sys.Date(), ".csv"), row.names=F)
   
   sheet1_queries$RE_Count[8] <- nrow(example9)
   
@@ -1053,7 +1054,7 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   print("Sheet 1 example 10 complete.")
   
-  write.csv(example10, file=paste0("sheet1_example10_search_results_", Sys.Date(), ".csv"), row.names=F)
+  write.csv(example10, file=paste0("sheet1_example10_query_results_", Sys.Date(), ".csv"), row.names=F)
   
   sheet1_queries$RE_Count[9] <- nrow(example10)
   
@@ -1116,7 +1117,7 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   print("Sheet 1 example 11 complete.")
   
-  write.csv(example11, file=paste0("sheet1_example11_search_results_", Sys.Date(), ".csv"), row.names=F)
+  write.csv(example11, file=paste0("sheet1_example11_query_results_", Sys.Date(), ".csv"), row.names=F)
   
   sheet1_queries$RE_Count[10] <- nrow(example11)
   
@@ -1221,7 +1222,7 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   })
   example12 <- do.call(rbind, example12_list)
   
-  write.csv(example12, file=paste0("sheet1_example12_search_results_modules_", Sys.Date(), ".csv"), row.names=F)
+  write.csv(example12, file=paste0("sheet1_example12_query_results_modules_", Sys.Date(), ".csv"), row.names=F)
   
   example12 <- example12 |> 
     na_if("NA") |>
@@ -1232,7 +1233,7 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   print("Sheet 1 example 12 complete.")
   
-  write.csv(example12, file=paste0("sheet1_example12_search_results_", Sys.Date(), ".csv"), row.names=F)
+  write.csv(example12, file=paste0("sheet1_example12_query_results_", Sys.Date(), ".csv"), row.names=F)
   
   sheet1_queries$RE_Count[11] <- nrow(example12)
   
@@ -1322,7 +1323,7 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   })
   example14 <- do.call(rbind, example14_list)
   
-  write.csv(example14, file=paste0("sheet1_example14_search_results_modules_", Sys.Date(), ".csv"), row.names=F)
+  write.csv(example14, file=paste0("sheet1_example14_query_results_modules_", Sys.Date(), ".csv"), row.names=F)
   
   example14 <- example14 |> 
     na_if("NA") |>
@@ -1333,7 +1334,7 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   print("Sheet 1 example 14 complete.")
   
-  write.csv(example14, file=paste0("sheet1_example14_search_results_", Sys.Date(), ".csv"), row.names=F)
+  write.csv(example14, file=paste0("sheet1_example14_query_results_", Sys.Date(), ".csv"), row.names=F)
   
   sheet1_queries$RE_Count[12] <- nrow(example14)
   
@@ -1424,7 +1425,7 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
     na_if("NA") |>
     dplyr::filter(!is.na(ENZYME))
     
-  write.csv(example15, file=paste0("sheet1_example15_search_results_modules_", Sys.Date(), ".csv"), row.names=F)
+  write.csv(example15, file=paste0("sheet1_example15_query_results_modules_", Sys.Date(), ".csv"), row.names=F)
   
   example15 <- example15 |> 
     dplyr::group_by(ENZYME) |> 
@@ -1433,7 +1434,7 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   print("Sheet 1 example 15 complete.")
   
-  write.csv(example15, file=paste0("sheet1_example15_search_results_", Sys.Date(), ".csv"), row.names=F)
+  write.csv(example15, file=paste0("sheet1_example15_query_results_", Sys.Date(), ".csv"), row.names=F)
   
   sheet1_queries$RE_Count[13] <- nrow(example15)
   
@@ -1535,7 +1536,7 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   if(!is.null(example16)>0){
     
-    write.csv(example16, file=paste0("sheet1_example16_search_results_modules_", Sys.Date(), ".csv"), row.names=F)
+    write.csv(example16, file=paste0("sheet1_example16_query_results_modules_", Sys.Date(), ".csv"), row.names=F)
     
     example16 <- example16 |> 
       na_if("NA") |>
@@ -1546,7 +1547,7 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
     
     print("Sheet 1 example 16 complete.")
     
-    write.csv(example16, file=paste0("sheet1_example16_search_results_", Sys.Date(), ".csv"), row.names=F)
+    write.csv(example16, file=paste0("sheet1_example16_query_results_", Sys.Date(), ".csv"), row.names=F)
     
     sheet1_queries$RE_Count[14] <- nrow(example16)
    
@@ -1624,7 +1625,7 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   print("Sheet 1 example 18 complete.")
   
-  write.csv(example18, file=paste0("sheet1_example18_search_results_", Sys.Date(), ".csv"), row.names=F)
+  write.csv(example18, file=paste0("sheet1_example18_query_results_", Sys.Date(), ".csv"), row.names=F)
   
   sheet1_queries$RE_Count[15] <- nrow(example18)
   
@@ -1682,7 +1683,7 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   })
   example19 <- do.call(rbind, example19_list)
   
-  write.csv(example19, file=paste0("sheet1_example19_search_results_modules_", Sys.Date(), ".csv"), row.names=F)
+  write.csv(example19, file=paste0("sheet1_example19_query_results_modules_", Sys.Date(), ".csv"), row.names=F)
   
   example19 <- example19 |> 
     dplyr::group_by(SetID, SetName) |>
@@ -1691,7 +1692,7 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   print("Sheet 1 example 19 complete.")
 
-  write.csv(example19, file=paste0("sheet1_example19_search_results_", Sys.Date(), ".csv"), row.names=F)
+  write.csv(example19, file=paste0("sheet1_example19_query_results_", Sys.Date(), ".csv"), row.names=F)
   
   sheet1_queries$RE_Count[16] <- nrow(example19)
   
@@ -1750,7 +1751,7 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   })
   example20 <- do.call(rbind, example20_list)
   
-  write.csv(example20, file=paste0("sheet1_example20_search_results_modules_", Sys.Date(), ".csv"), row.names=F)
+  write.csv(example20, file=paste0("sheet1_example20_query_results_modules_", Sys.Date(), ".csv"), row.names=F)
   
   example20 <- example20 |> 
     dplyr::group_by(SetID, SetName) |>
@@ -1759,12 +1760,13 @@ search_queries_sheet1 <- function(data_dirs, MONDO, UBERON){
   
   print("Sheet 1 example 20 complete.")
   
-  write.csv(example20, file=paste0("sheet1_example20_search_results_", Sys.Date(), ".csv"), row.names=F)
+  write.csv(example20, file=paste0("sheet1_example20_query_results_", Sys.Date(), ".csv"), row.names=F)
   
   sheet1_queries$RE_Count[17] <- nrow(example20)
   
+  ############################################# Save query counts ############################################# 
   
-  write.csv(sheet1_queries, file=paste0("sheet1_query_counts_", Sys.Date(), ".csv"))
+  write.csv(sheet1_queries, file=paste0("sheet1_query_counts_", Sys.Date(), ".csv"), row.names=F)
   
 }
 
