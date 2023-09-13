@@ -10,1033 +10,6 @@ plan(multicore, workers=10)
 
 source("/home/rebecca/code/misc/map_identifiers/map_identifiers_function.R")
 
-search_queries_covariation <- function(data_dirs){
-  
-  covariation_queries <- data.frame(Query.No=1:11, 
-                                    Result_Type=c("Covariation modules", "Covariation modules", "Covariation modules",
-                                                  "Covariation modules (all attributes checked)", "Covariation modules (all attributes checked)",
-                                                  "Covariation modules (all attributes checked)", "Covariation modules (all attributes checked)",
-                                                  "Covariation modules", "Covariation modules", "Covariation modules", "Covariation modules"),
-                                    Module_Definition=c("Any", "Any", "Bonferroni", "Bonferroni", "Bonferroni", 
-                                                        "Bonferroni", "Seed", "Any", "Bonferroni", "Seed", "Any"),
-                                    Set_ID=c("MOSET7061", "MOSET6870", "M2454_v7.4", "MOSET6935", "MOSET7032",
-                                             "M1694_v7.4", NA, "M9210_v7.4", "MOSET6808", NA, NA),
-                                    Enrichment_Pval=c(1e-10, 1e-10, 1e-20, 1e-20, 1e-20, 1e-10, NA, 1e-5, 1e-20, NA, NA),
-                                    Sample_Match_Percent=c(NA, NA, NA, NA, NA, NA, NA, NA, 100, NA, NA),
-                                    Disease=c(NA, NA, NA, NA, NA, NA, NA, NA, "glioblastoma (including child terms)", NA, NA),
-                                    Feature_Input_Type=c(NA, NA, NA, NA, NA, NA, "Gene Symbol", NA, NA, "Gene Symbol", "Gene Symbol"),
-                                    Feature_Input_ID=c(NA, NA, NA, NA, NA, NA, 
-                                                       c("IDH1, OLIG1, OLIG2, ASCL1 (is set to AND)"), NA, NA,
-                                                       c("OLIG1, OLIG2, ASCL1, EGFR, PCDH15, ERBB4, SLC1A2 (is set to AND)"),
-                                                       c("SHD, OLIG1, OLIG2, SOX4, SOX8 (is set to AND)")),
-                                    RE_Count=NA)
-  
-  ############################################# Covariation, example 1 ############################################# 
-  
-  ## Result Type = Covariation Module
-  ## Module Definition = Any
-  ## Set ID = MOSET7061
-  ## Enrichment P-value < 1e-10
-  
-  setid <- "MOSET7061"
-  pval_cut <- 1e-10
-  
-  print("Starting covariation example 1.")
-  
-  example1_list <- lapply(1:nrow(data_dirs), function(i){
-    
-    if(!is.na(data_dirs$FM_dir[i])){
-      
-      networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
-      networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
-      
-      networks_list <- future_lapply(1:length(networks), function(j){
-        
-        enrich_dirs <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
-        enrich_out <- covariation_enrich_search(enrich_dirs, setid=setid, pval_cut=pval_cut)
-        if(nrow(enrich_out)>0){
-          network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
-          return(data.frame(Dataset=data_dirs$Title[i], Network=network, enrich_out))
-        }
-        
-      }, future.seed=T) 
-      
-      return(do.call(rbind, networks_list))
-      
-    } 
-    
-  })
-  example1 <- do.call(rbind, example1_list)
-
-  write.csv(example1, file=paste0("covariation_example1_query_results_all_siginificant_", Sys.Date(), ".csv"), row.names=F)
-  
-  covariation_queries$RE_Count[1] <- paste("All significant:", nrow(example1))
-
-  example1 <- example1 |>
-    dplyr::group_by(Dataset) |>
-    dplyr::slice_min(Pval, with_ties=T)
-  
-  print("Covariation example 1 complete.")
-  
-  write.csv(example1, file=paste0("covariation_example1_query_results_most_significant_", Sys.Date(), ".csv"), row.names=F)
-  
-  covariation_queries$RE_Count[1] <- paste(covariation_queries$RE_Count[1], "| Most significant:", nrow(example1))
-  
-  ############################################# Covariation, example 2 ############################################# 
-  
-  ## Result Type = Covariation Module
-  ## Module Definition = Any
-  
-  setid <- "MOSET6870"
-  pval_cut <- 1e-10
-  
-  print("Starting covariation example 2.")
-  
-  example2_list <- lapply(1:nrow(data_dirs), function(i){
-    
-    if(!is.na(data_dirs$FM_dir[i])){
-      
-      networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
-      networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
-      
-      networks_list <- future_lapply(1:length(networks), function(j){
-        
-        enrich_dirs <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
-        enrich_out <- covariation_enrich_search(enrich_dirs, setid=setid, pval_cut=pval_cut)
-        if(nrow(enrich_out)>0){
-          network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
-          return(data.frame(Dataset=data_dirs$Title[i], Network=network, enrich_out))
-        }
-        
-      }, future.seed=T) 
-      
-      return(do.call(rbind, networks_list))
-      
-    } 
-    
-  })
-  example2 <- do.call(rbind, example2_list)
-  
-  if(!is.null(example2)>0){
-    
-    write.csv(example2, file=paste0("covariation_example2_query_results_all_siginificant_", Sys.Date(), ".csv"), row.names=F)
-    
-    covariation_queries$RE_Count[2] <- paste("All significant:", nrow(example2))
-    
-    example2 <- example2 |>
-      dplyr::group_by(Dataset) |>
-      dplyr::slice_min(Pval, with_ties=T)
-    
-    print("Covariation example 2 complete.")
-    
-    write.csv(example2, file=paste0("covariation_example2_query_results_most_significant_", Sys.Date(), ".csv"), row.names=F)
-    
-    covariation_queries$RE_Count[2] <- paste(covariation_queries$RE_Count[2], "| Most significant:", nrow(example2))
-    
-  } else {
-    
-    print("No results found for example query 2.")
-    covariation_queries$RE_Count[2] <- 0
-    
-  }
-
-  ############################################# Covariation, example 3 ############################################# 
-  
-  ## Result Type = Covariation Module
-  ## Module Definition = Bonferroni
-  
-  setid <- "M2454_v7.4"
-  pval_cut <- 1e-20
-  
-  print("Starting covariation example 3.")
-  
-  example3_list <- lapply(1:nrow(data_dirs), function(i){
-    
-    if(!is.na(data_dirs$FM_dir[i])){
-      
-      networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
-      networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
-      
-      networks_list <- future_lapply(1:length(networks), function(j){
-        
-        enrich_dirs <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
-        enrich_out <- covariation_enrich_search(enrich_dirs, setid=setid, pval_cut=pval_cut)
-        enrich_out <- enrich_out[enrich_out$Mod_Def=="TOPMODPOSBC",]
-        if(nrow(enrich_out)>0){
-          network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
-          return(data.frame(Dataset=data_dirs$Title[i], Network=network, enrich_out))
-        }
-        
-      }, future.seed=T) 
-      
-      return(do.call(rbind, networks_list))
-      
-    } 
-    
-  })
-  example3 <- do.call(rbind, example3_list)
-  
-  write.csv(example3, file=paste0("covariation_example3_query_results_all_siginificant_", Sys.Date(), ".csv"), row.names=F)
-  
-  covariation_queries$RE_Count[3] <- paste("All significant:", nrow(example3))
-  
-  example3 <- example3 |>
-    dplyr::group_by(Dataset) |>
-    dplyr::slice_min(Pval, with_ties=T)
-  
-  print("Covariation example 3 complete.")
-  
-  write.csv(example3, file=paste0("covariation_example3_query_results_most_significant_", Sys.Date(), ".csv"), row.names=F)
-  
-  covariation_queries$RE_Count[3] <- paste(covariation_queries$RE_Count[3], "| Most significant:", nrow(example3))
-  
-  ############################################# Covariation, example 4 ############################################# 
-  
-  ## Result Type = Covariation modules (all attributes checked)
-  ## Module Defition = Bonferroni
-  
-  setid <- "MOSET6935"
-  pval_cut <- 1e-20
-  
-  print("Starting covariation example 4.")
-  
-  example4_list <- lapply(1:nrow(data_dirs), function(i){
-    
-    if(!is.na(data_dirs$FM_dir[i])){
-      
-      networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
-      networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
-      
-      networks_list <- future_lapply(1:length(networks), function(j){
-        
-        enrich_dirs <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
-        enrich_out <- covariation_enrich_search(enrich_dirs, setid=setid, pval_cut=pval_cut)
-        enrich_out <- enrich_out[enrich_out$Mod_Def=="TOPMODPOSBC",]
-        if(nrow(enrich_out)>0){
-          network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
-          return(data.frame(Dataset=data_dirs$Title[i], Network=network, enrich_out))
-        }
-        
-      }, future.seed=T) 
-      
-      return(do.call(rbind, networks_list))
-      
-    } 
-    
-  })
-  example4 <- do.call(rbind, example4_list)
-  
-  write.csv(example4, file=paste0("covariation_example4_query_results_all_siginificant_", Sys.Date(), ".csv"), row.names=F)
-  
-  covariation_queries$RE_Count[4] <- paste("All significant:", nrow(example4))
-  
-  example4 <- example4 |>
-    dplyr::group_by(Dataset) |>
-    dplyr::slice_min(Pval, with_ties=T)
-  
-  print("Covariation example 4 complete.")
-  
-  write.csv(example4, file=paste0("covariation_example4_query_results_most_significant_", Sys.Date(), ".csv"), row.names=F)
-  
-  covariation_queries$RE_Count[4] <- paste(covariation_queries$RE_Count[4], "| Most significant:", nrow(example4))
-  
-  ############################################# Covariation, example 5 ############################################# 
-  
-  ## Result Type = Covariation modules (all attributes checked)
-  ## Module Defition = Bonferroni
-  
-  setid <- "MOSET7032"
-  pval_cut <- 1e-20
-  
-  print("Starting covariation example 5.")
-  
-  example5_list <- lapply(1:nrow(data_dirs), function(i){
-    
-    if(!is.na(data_dirs$FM_dir[i])){
-      
-      networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
-      networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
-      
-      networks_list <- future_lapply(1:length(networks), function(j){
-        
-        enrich_dirs <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
-        enrich_out <- covariation_enrich_search(enrich_dirs, setid=setid, pval_cut=pval_cut)
-        enrich_out <- enrich_out[enrich_out$Mod_Def=="TOPMODPOSBC",]
-        if(nrow(enrich_out)>0){
-          network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
-          return(data.frame(Dataset=data_dirs$Title[i], Network=network, enrich_out))
-        }
-        
-      }, future.seed=T) 
-      
-      return(do.call(rbind, networks_list))
-      
-    } 
-    
-  })
-  example5 <- do.call(rbind, example5_list)
-  
-  write.csv(example5, file=paste0("covariation_example5_query_results_all_siginificant_", Sys.Date(), ".csv"), row.names=F)
-  
-  covariation_queries$RE_Count[5] <- paste("All significant:", nrow(example5))
-  
-  example5 <- example5 |>
-    dplyr::group_by(Dataset) |>
-    dplyr::slice_min(Pval, with_ties=T)
-  
-  print("Covariation example 5 complete.")
-  
-  write.csv(example5, file=paste0("covariation_example5_query_results_most_significant_", Sys.Date(), ".csv"), row.names=F)
-  
-  covariation_queries$RE_Count[5] <- paste(covariation_queries$RE_Count[5], "| Most significant:", nrow(example5))
-  
-  
-  ############################################# Covariation, example 6 ############################################# 
-  
-  ## Result Type = Covariation modules (all attributes checked)
-  ## Module Defition = Bonferroni
-  
-  setid <- "M1694_v7.4"
-  pval_cut <- 1e-10
-  
-  print("Starting covariation example 6.")
-  
-  example6_list <- lapply(1:nrow(data_dirs), function(i){
-    
-    if(!is.na(data_dirs$FM_dir[i])){
-      
-      networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
-      networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
-      
-      networks_list <- future_lapply(1:length(networks), function(j){
-        
-        enrich_dirs <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
-        enrich_out <- covariation_enrich_search(enrich_dirs, setid=setid, pval_cut=pval_cut)
-        enrich_out <- enrich_out[enrich_out$Mod_Def=="TOPMODPOSBC",]
-        if(nrow(enrich_out)>0){
-          network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
-          return(data.frame(Dataset=data_dirs$Title[i], Network=network, enrich_out))
-        }
-        
-      }, future.seed=T) 
-      
-      return(do.call(rbind, networks_list))
-      
-    } 
-    
-  })
-  example6 <- do.call(rbind, example6_list)
-  
-  if(!is.null(example6)){
-    
-    write.csv(example6, file=paste0("covariation_example6_query_results_all_siginificant_", Sys.Date(), ".csv"), row.names=F)
-    
-    covariation_queries$RE_Count[6] <- paste("All significant:", nrow(example6))
-    
-    example6 <- example6 |>
-      dplyr::group_by(Dataset) |>
-      dplyr::slice_min(Pval, with_ties=T)
-    
-    print("Covariation example 6 complete.")
-    
-    write.csv(example6, file=paste0("covariation_example6_query_results_most_significant_", Sys.Date(), ".csv"), row.names=F)
-    
-    covariation_queries$RE_Count[6] <- paste(covariation_queries$RE_Count[6], "| Most significant:", nrow(example6))
-    
-  } else {
-    print("No results found for example query 6.")
-    covariation_queries$RE_Count[6] <- 0
-  }
-  
-  ############################################# Covariation, example 7 #############################################
-  
-  ## Result Type = Covariation modules (all attributes checked)
-  ## Module Defition = Seed
-  ## Feature Input Type: Gene Symbol
-  ## Feature Input IDs: IDH1, OLIG1, OLIG2, ASCL1 (Is set to AND)
-  
-  feature_list <- c("IDH1", "OLIG1", "OLIG2", "ASCL1")
-  
-  print("Starting covariation example 7.")
-  
-  example7_list <- lapply(1:nrow(data_dirs), function(i){
-    
-    if(!is.na(data_dirs$FM_dir[i])){
-      
-      networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
-      networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
-      
-      DS_attr <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="DS_attributes", full.names=T)[1])
-      unique_id <- DS_attr$Value[DS_attr$Attribute=="Unique Identifier"]
-      platform <- DS_attr$Value[DS_attr$Attribute=="Mapping Tables"]
-      
-      networks_list <- future_lapply(1:length(networks), function(j){
-        
-        kME <- fread(list.files(path=networks[j], pattern="kME", full.names=T), data.table=F)
-        
-        if(unique_id=="SYMBOL"){
-          
-          kME <- mapAlias2Symbol(features=kME, unique_id_col=2, 
-                                 tables_dir, keep_all=T, fill_NAs=T)
-          
-        } else {
-          
-          kME <- map2Any(features=kME, unique_id, map_to="SYMBOL", 
-                         unique_id_col=2, platform, tables_dir, 
-                         keep_all=T)
-          
-        }
-        
-        kME <- kME[,!is.element(colnames(kME), "SYMBOL.y")]
-        kME <- kME |> na_if("NA") |> na_if("") |>
-          tidyr::separate_rows(SYMBOL, sep=" \\| ") |>
-          as.data.frame()
-        
-        feature_mods <- covariation_feature_search(kME, feature_list, feature_type="SYMBOL", mod_def="Seed", and_or="AND")
-        
-        if(!is.null(feature_mods)){
-          network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
-          return(data.frame(Dataset=data_dirs$Title[i], 
-                            Network=network, feature_mods))
-        }
-        
-      }, future.seed=T) 
-      
-      return(do.call(rbind, networks_list))
-      
-    } 
-    
-  })
-  example7 <- do.call(rbind, example7_list)
-  
-  if(!is.null(example7)>0){
-
-    print("Covariation example 7 complete.")
-    write.csv(example7, file=paste0("covariation_example7_query_results_", Sys.Date(), ".csv"), row.names=F)
-    covariation_queries$RE_Count[7] <- nrow(example7)
-    
-  } else {
-    print("No results found for example query 7.")
-    covariation_queries$RE_Count[7] <- 0
-  }
-  
-  ############################################# Covariation, example 8 ############################################# 
-  
-  ## Result Type = Covariation modules
-  ## Module Defition = Any
-  
-  setid <- "M9210_v7.4"
-  pval_cut <- 1e-5
-  
-  print("Starting covariation example 8.")
-  
-  example8_list <- lapply(1:nrow(data_dirs), function(i){
-    
-    if(!is.na(data_dirs$FM_dir[i])){
-      
-      networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
-      networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
-      
-      networks_list <- future_lapply(1:length(networks), function(j){
-        
-        enrich_dirs <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
-        enrich_out <- covariation_enrich_search(enrich_dirs, setid=setid, pval_cut=pval_cut)
-        if(nrow(enrich_out)>0){
-          network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
-          return(data.frame(Dataset=data_dirs$Title[i], Network=network, enrich_out))
-        }
-        
-      }, future.seed=T) 
-      
-      return(do.call(rbind, networks_list))
-      
-    } 
-    
-  })
-  example8 <- do.call(rbind, example8_list)
-  
-  write.csv(example8, file=paste0("covariation_example8_query_results_all_siginificant_", Sys.Date(), ".csv"), row.names=F)
-  
-  covariation_queries$RE_Count[8] <- paste("All significant:", nrow(example8))
-  
-  example8 <- example8 |>
-    dplyr::group_by(Dataset) |>
-    dplyr::slice_min(Pval, with_ties=T)
-  
-  print("Covariation example 8 complete.")
-  
-  write.csv(example8, file=paste0("covariation_example8_query_results_most_significant_", Sys.Date(), ".csv"), row.names=F)
-  
-  covariation_queries$RE_Count[8] <- paste(covariation_queries$RE_Count[8], "| Most significant:", nrow(example8))
-  
-  ############################################# Covariation, example 9 ############################################# 
-  
-  ## Result Type = Covariation modules
-  ## Module Defition = Bonferroni
-  ## Disease = glioblastoma (including child terms)
-  ## Sample Match Percent = 100
-  
-  setid <- "MOSET6808"
-  pval_cut <- 1e-20
-  
-  print("Starting covariation example 9.")
-  
-  example9_list <- lapply(1:nrow(data_dirs), function(i){
-    
-    if(!is.na(data_dirs$FM_dir[i])){
-      
-      sampleinfo <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="sample_attributes", full.names=T)[1])
-      
-      GBM_samples <- get_disease_samples(mondo_vec=sampleinfo$MONDO_ID, disease="glioblastoma")
-      
-      if(length(GBM_samples)==nrow(sampleinfo)){
-        
-        networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
-        networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
-        
-        networks_list <- future_lapply(1:length(networks), function(j){
-          
-          enrich_dirs <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
-          enrich_out <- covariation_enrich_search(enrich_dirs, setid=setid, pval_cut=pval_cut)
-          enrich_out <- enrich_out[enrich_out$Mod_Def=="TOPMODPOSBC",]
-          if(nrow(enrich_out)>0){
-            network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
-            return(data.frame(Dataset=data_dirs$Title[i], Network=network, enrich_out))
-          }
-          
-        }, future.seed=T) 
-        
-        return(do.call(rbind, networks_list))
-        
-      }
-      
-    } 
-    
-  })
-  example9 <- do.call(rbind, example9_list)
-  
-  write.csv(example9, file=paste0("covariation_example9_query_results_all_siginificant_", Sys.Date(), ".csv"), row.names=F)
-  
-  covariation_queries$RE_Count[9] <- paste("All significant:", nrow(example9))
-  
-  example9 <- example9 |>
-    dplyr::group_by(Dataset) |>
-    dplyr::slice_min(Pval, with_ties=T)
-  
-  print("Covariation example 9 complete.")
-  
-  write.csv(example9, file=paste0("covariation_example9_query_results_most_significant_", Sys.Date(), ".csv"), row.names=F)
-  
-  covariation_queries$RE_Count[9] <- paste(covariation_queries$RE_Count[9], "| Most significant:", nrow(example9))
-  
-  ############################################# Covariation, example 10 #############################################
-  
-  ## Result Type = Covariation modules
-  ## Module Defition = Seed
-  ## Feature Input Type: Gene Symbol
-  ## Feature Input IDs: OLIG1, OLIG2, ASCL1, EGFR, PCDH15, ERBB4, SLC1A2 (is set to AND)
-  
-  feature_list <- c("OLIG1", "OLIG2", "ASCL1", "EGFR", "PCDH15", "ERBB4", "SLC1A2")
-  
-  print("Starting covariation example 10.")
-  
-  example10_list <- lapply(1:nrow(data_dirs), function(i){
-    
-    if(!is.na(data_dirs$FM_dir[i])){
-      
-      networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
-      networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
-      
-      DS_attr <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="DS_attributes", full.names=T)[1])
-      unique_id <- DS_attr$Value[DS_attr$Attribute=="Unique Identifier"]
-      platform <- DS_attr$Value[DS_attr$Attribute=="Mapping Tables"]
-      
-      networks_list <- future_lapply(1:length(networks), function(j){
-        
-        kME <- fread(list.files(path=networks[j], pattern="kME", full.names=T), data.table=F)
-        
-        if(unique_id=="SYMBOL"){
-          
-          kME <- mapAlias2Symbol(features=kME, unique_id_col=2, 
-                                 tables_dir, keep_all=T, fill_NAs=T)
-          
-        } else {
-          
-          kME <- map2Any(features=kME, unique_id, map_to="SYMBOL", 
-                         unique_id_col=2, platform, tables_dir, 
-                         keep_all=T)
-          
-        }
-        
-        kME <- kME[,!is.element(colnames(kME), "SYMBOL.y")]
-        kME <- kME |> na_if("NA") |> na_if("") |>
-          tidyr::separate_rows(SYMBOL, sep=" \\| ") |>
-          as.data.frame()
-        
-        feature_mods <- covariation_feature_search(kME, feature_list, feature_type="SYMBOL", mod_def="Seed", and_or="AND")
-        
-        if(!is.null(feature_mods)){
-          network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
-          return(data.frame(Dataset=data_dirs$Title[i], 
-                            Network=network, feature_mods))
-        }
-        
-      }, future.seed=T) 
-      
-      return(do.call(rbind, networks_list))
-      
-    } 
-    
-  })
-  example10 <- do.call(rbind, example10_list)
-  
-  if(!is.null(example10)>0){
-    
-    print("Covariation example 10 complete.")
-    write.csv(example10, file=paste0("covariation_example10_query_results_", Sys.Date(), ".csv"), row.names=F)
-    covariation_queries$RE_Count[10] <- nrow(example10)
-    
-  } else {
-    print("No results found for example query 10.")
-    covariation_queries$RE_Count[10] <- 0
-  }
-  
-  ############################################# Covariation, example 11 #############################################
-  
-  ## Result Type = Covariation modules
-  ## Module Defition = Any
-  ## Feature Input Type: Gene Symbol
-  ## Feature Input IDs: SHD, OLIG1, OLIG2, SOX4, SOX8 (is set to AND)
-  
-  feature_list <- c("SHD", "OLIG1", "OLIG2", "SOX4", "SOX8")
-  
-  print("Starting covariation example 11.")
-  
-  example11_list <- lapply(1:nrow(data_dirs), function(i){
-    
-    if(!is.na(data_dirs$FM_dir[i])){
-      
-      networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
-      networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
-      
-      DS_attr <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="DS_attributes", full.names=T)[1])
-      unique_id <- DS_attr$Value[DS_attr$Attribute=="Unique Identifier"]
-      platform <- DS_attr$Value[DS_attr$Attribute=="Mapping Tables"]
-      
-      networks_list <- future_lapply(1:length(networks), function(j){
-        
-        kME <- fread(list.files(path=networks[j], pattern="kME", full.names=T), data.table=F)
-        
-        if(unique_id=="SYMBOL"){
-          
-          kME <- mapAlias2Symbol(features=kME, unique_id_col=2, 
-                                 tables_dir, keep_all=T, fill_NAs=T)
-          
-        } else {
-          
-          kME <- map2Any(features=kME, unique_id, map_to="SYMBOL", 
-                         unique_id_col=2, platform, tables_dir, 
-                         keep_all=T)
-          
-        }
-        
-        kME <- kME[,!is.element(colnames(kME), "SYMBOL.y")]
-        kME <- kME |> na_if("NA") |> na_if("") |>
-          tidyr::separate_rows(SYMBOL, sep=" \\| ") |>
-          as.data.frame()
-        
-        feature_mods <- covariation_feature_search(kME, feature_list, feature_type="SYMBOL", mod_def="Any", and_or="AND")
-        
-        if(!is.null(feature_mods)){
-          network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
-          return(data.frame(Dataset=data_dirs$Title[i], 
-                            Network=network, feature_mods))
-        }
-        
-      }, future.seed=T) 
-      
-      return(do.call(rbind, networks_list))
-      
-    } 
-    
-  })
-  example11 <- do.call(rbind, example11_list)
-  
-  if(!is.null(example11)>0){
-    
-    print("Covariation example 11 complete.")
-    write.csv(example11, file=paste0("covariation_example11_query_results_", Sys.Date(), ".csv"), row.names=F)
-    covariation_queries$RE_Count[11] <- nrow(example11)
-    
-  } else {
-    print("No results found for example query 11.")
-    covariation_queries$RE_Count[11] <- 0
-  }
-  
-  ############################################# Save query counts #############################################
-  
-  write.csv(covariation_queries, file=paste0("covariation_query_counts_", Sys.Date(), ".csv"), row.names=F)
-  
-}
-
-search_queries_sheet2 <- function(data_dirs){
-  
-  sheet2_queries <- data.frame(Query.No=1:5, 
-                               Query=c("Find all human brain samples with any kind of disease (disease DOES NOT EQUAL Normal)",
-                                       "Find all covariation networks from human samples without disease where minimum module size >= 10 and # modules ≥ 50",
-                                       "Find all covariation modules in datasets consisting SOLELY of normal adult human samples that contain the following genes: BUB1, MKI67, PBK, and WEE1",
-                                       "Find all covariation modules in datasets consisting SOLELY of human normal brain samples that are significantly enriched with microglial markers",
-                                       "Export a list of unique gene symbols for covariation modules identified in datasets that include normal adult male brain samples and are maximally enriched with markers of radial glia (cell type)"),
-                               RE_Count=NA)
-  
-  ############################################# Sheet 2, example 1 ############################################# 
-  
-  print("Starting sheet 2 example 1.")
-  
-  ## Find all human brain samples with any kind of disease (disease DOES NOT EQUAL Normal)
-  
-  DC_dirs <- unique(sapply(strsplit(na.omit(unique(data_dirs$DC_dir)), "/"), function(x){
-    paste(x[-length(x)], collapse="/")
-  }))
-  
-  example1_list <- lapply(1:length(DC_dirs), function(i){
-    
-    DC_attr <- read.csv(list.files(path=DC_dirs[i], pattern="DC_attributes", full.names=T))
-    sampleinfo <- fread(list.files(path=DC_dirs[i], pattern="sample_attributes", 
-                                   full.names=T), data.table=F)
-    sampleinfo <- sampleinfo[get_brain_samples(uberon_vec=sampleinfo$UBERON_ID),]
-    sampleinfo |> na_if("") |>
-      dplyr::filter(sampleinfo$Disease!="Normal") |>
-      dplyr::mutate(Data_Collection=DC_attr[1,2]) |>
-      dplyr::select(Data_Collection, Label, 
-                    Organism, Tissue, Disease)
-    
-  })
-  example1 <- do.call(rbind, example1_list)
-  
-  print("Sheet 2 example 1 complete.")
-  
-  write.csv(example1, file=paste0("sheet2_example1_query_results_", Sys.Date(), ".csv"), row.names=F)
-
-  sheet2_queries$RE_Count[1] <- nrow(example1)
-  
-  ############################################# Sheet 2, example 2 ############################################# 
-  
-  print("Starting sheet 2 example 2.")
-  
-  ## Find all covariation networks from human samples without disease where minimum module size >= 10 and # modules ≥ 50
-  
-  example2_list <- lapply(1:nrow(data_dirs), function(i){
-    
-    if(!is.na(data_dirs$FM_dir[i])){
-      
-      sampleinfo <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="sample_attributes", full.names=T)[1])
-      
-      if(sum(is.element(sampleinfo$Disease, "Normal"))>0){
-        
-        networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
-        networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
-        minsize <- as.numeric(gsub("minSize", "", sapply(strsplit(networks, "_"), function(x){
-          x[grep("minSize", x)]
-        })))
-        networks <- networks[minsize>=10]
-        
-        network_list <- lapply(1:length(networks), function(j){
-          
-          modstats <- fread(list.files(path=networks[j], pattern="Module_statistics", full.names=T)[1], data.table=F)
-          
-          if(nrow(modstats)>=50){
-            DS_attr <- read.csv(list.files(path=data_dirs$FM_dir[i], pattern="attributes", full.names=T))
-            network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
-            return(data.frame(Dataset=data_dirs$Title[i], Network=network, 
-                              No.Modules=nrow(modstats)))
-          } 
-          
-        }) 
-        
-        return(do.call(rbind, network_list))
-        
-      } 
-      
-    } 
-    
-  })
-  example2 <- do.call(rbind, example2_list)
-  
-  print("Sheet 2 example 2 complete.")
-  
-  write.csv(example2, file=paste0("sheet2_example2_query_results_", Sys.Date(), ".csv"), row.names=F)
-  
-  sheet2_queries$RE_Count[2] <- nrow(example2)
-  
-  ############################################# Sheet 2, example 3 ############################################# 
-  
-  print("Starting sheet 2 example 3.")
-  
-  ## Find all covariation modules in datasets consisting SOLELY of normal adult human samples that contain 
-  ## the following genes: BUB1, MKI67, PBK, and WEE1 (ranked by Jaccard index)
-  
-  feature_list <- c("BUB1", "MKI67", "PBK", "WEE1")
-  
-  example3_list <- lapply(1:nrow(data_dirs), function(i){
-    
-    if(!is.na(data_dirs$FM_dir[i])){
-      
-      sampleinfo <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="sample_attributes", full.names=T)[1])
-      
-      brain_samples <- get_brain_samples(uberon_vec=sampleinfo$UBERON_ID)
-      
-      if(length(brain_samples)==nrow(sampleinfo)){
-       
-        if(is.element("Developmental_Epoch", colnames(sampleinfo))){ 
-          
-          if(length(intersect(grep("Normal", sampleinfo$Disease), 
-                              grep("adult", sampleinfo$Developmental_Epoch, ignore.case=T)))==nrow(sampleinfo)){
-            
-            networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
-            networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
-            
-            DS_attr <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="DS_attributes", full.names=T)[1])
-            unique_id <- DS_attr$Value[DS_attr$Attribute=="Unique Identifier"]
-            platform <- DS_attr$Value[DS_attr$Attribute=="Mapping Tables"]
-            
-            networks_list <- future_lapply(1:length(networks), function(j){
-              
-              kME <- fread(list.files(path=networks[j], pattern="kME", full.names=T), data.table=F)
-              
-              if(unique_id=="SYMBOL"){
-                
-                kME <- mapAlias2Symbol(features=kME, unique_id_col=2, 
-                                       tables_dir, keep_all=T, fill_NAs=T)
-                
-              } else {
-                
-                kME <- map2Any(features=kME, unique_id, map_to="SYMBOL", 
-                               unique_id_col=2, platform, tables_dir, 
-                               keep_all=T)
-                
-              }
-              
-              kME <- kME[,!is.element(colnames(kME), "SYMBOL.y")]
-              kME <- kME |> na_if("NA") |> na_if("") |>
-                tidyr::separate_rows(SYMBOL, sep=" \\| ") |>
-                as.data.frame()
-              
-              feature_mods <- covariation_feature_search(kME, feature_list, feature_type="SYMBOL", mod_def="Any", and_or="AND")
-              
-              if(!is.null(feature_mods)){
-                network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
-                return(data.frame(Dataset=data_dirs$Title[i], 
-                                  Network=network, feature_mods))
-              }
-              
-            }, future.seed=T) 
-            
-            return(do.call(rbind, networks_list))
-            
-          }
-          
-        }
-        
-      }
-      
-    } 
-    
-  })
-  example3 <- do.call(rbind, example3_list)
-  
-  if(!is.null(example3)>0){
-    
-    print("Sheet 2 example 3 complete.")
-    write.csv(example3, file=paste0("sheet2_example3_query_results_", Sys.Date(), ".csv"), row.names=F)
-    sheet2_queries$RE_Count[3] <- nrow(example3)
-    
-  } else {
-    
-    print("No results found for example query 3.")
-    sheet2_queries$RE_Count[3] <- 0
-    
-  }
- 
-  ############################################# Sheet 2, example 4 ############################################# 
-  
-  print("Starting sheet 2 example 4.")
-  
-  ## Find all covariation modules in datasets consisting SOLELY of human normal brain samples 
-  ## that are significantly enriched with microglial markers, ranked by enrichment P-values
-    
-  example4_list <- lapply(1:nrow(data_dirs), function(i){
-    
-    if(!is.na(data_dirs$FM_dir[i])){
-      
-      sampleinfo <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="sample_attributes", full.names=T)[1])
-      
-      brain_samples <- get_brain_samples(uberon_vec=sampleinfo$UBERON_ID)
-
-      if(length(intersect(brain_samples, grep("Normal", sampleinfo$Disease, ignore.case=T)))==nrow(sampleinfo)){
-          
-          networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
-          networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
-          
-          networks_list <- future_lapply(1:length(networks), function(j){
-            
-            enrich_dirs <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
-            enrich_out <- covariation_enrich_search(enrich_dirs, setname="microglia")
-            if(nrow(enrich_out)>0){
-              network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
-              return(data.frame(Dataset=data_dirs$Title[i], Network=network, enrich_out))
-            }
-            
-          }, future.seed=T) 
-          
-          return(do.call(rbind, networks_list))
-            
-        }
-        
-    } 
-    
-  })
-  example4 <- do.call(rbind, example4_list)
-  
-  example4$Mod_ID <- paste(example4$Dataset, example4$Network, 
-                           example4$Module, example4$Mod_Def)
-  
-  example4 <- example4 |> 
-    dplyr::group_by(Mod_ID) |>
-    dplyr::slice_min(Pval, with_ties=T) |> 
-    dplyr::arrange(Pval)
-  
-  write.csv(example4, file=paste0("sheet2_example4_query_results_gene_sets_", Sys.Date(), ".csv"), row.names=F)
-  
-  example4 <- example4 |> 
-    dplyr::group_by(Mod_ID) |>
-    dplyr::slice_min(Pval, with_ties=F)
-
-  print("Sheet 2 example 4 complete.")
-  
-  write.csv(example4, file=paste0("sheet2_example4_query_results_", Sys.Date(), ".csv"), row.names=F)
-  
-  sheet2_queries$RE_Count[4] <- nrow(example4)
-  
-  ############################################# Sheet 2, example 5 ############################################# 
-  
-  print("Starting sheet 2 example 5.")
-  
-  ## Export a list of unique gene symbols for covariation modules identified in datasets that include normal
-  ## adult male brain samples and are maximally enriched with markers of radial glia (cell type), ranked by kME / Fidelity
-  
-  example5_list <- lapply(1:nrow(data_dirs), function(i){
-    
-    if(!is.na(data_dirs$FM_dir[i])){
-    
-      sampleinfo <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="sample_attributes", full.names=T)[1])
-      
-      if(is.element("Developmental_Epoch", colnames(sampleinfo))){ 
-        
-        brain_samples <- get_brain_samples(uberon_vec=sampleinfo$UBERON_ID)
-        
-        if(length(intersect(brain_samples, 
-                            intersect(grep("M", sampleinfo$Sex), 
-                                      intersect(grep("adult", sampleinfo$Developmental_Epoch, ignore.case=T), 
-                                                grep("Normal", sampleinfo$Disease)))))>0){
-          
-          networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
-          networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
-          
-          networks_list <- future_lapply(1:length(networks), function(j){
-
-            enrich_dirs <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
-            enrich_out <- covariation_enrich_search(enrich_dirs, setname="radial_glia")
-            if(nrow(enrich_out)>0){
-              DS_attr <- list.files(path=data_dirs$SN_dir[i], pattern="DS_attributes", full.names=T)[1]
-              network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
-              return(data.frame(Dataset=data_dirs$Title[i], Network=network, enrich_out, 
-                                DS_Attr=DS_attr))
-            }
-            
-          }, future.seed=T)
-          modules <- do.call(rbind, networks_list)
-          
-          if(nrow(modules)>0){
-            
-            modules <- modules |> dplyr::slice_min(Pval, with_ties=T)
-            
-            ## Get module genes
-            
-            gene_list <- lapply(1:nrow(modules), function(j){
-              
-              kME <- fread(list.files(path=file.path(data_dirs$FM_dir[i], modules$Network[j]), 
-                                      pattern="kME", full.names=T), data.table=F)
-              col <- kME[,grep(toupper(modules$Mod_Def[j]), toupper(colnames(kME)))]
-              kME <- kME[is.element(col, as.character(modules$Module[j])),]
-              
-              ## Map identifiers to SYMBOL:
-              
-              DS_attr <- read.csv(modules$DS_Attr[j])
-              unique_id <- DS_attr$Value[DS_attr$Attribute=="Unique Identifier"]
-              platform <- DS_attr$Value[DS_attr$Attribute=="Mapping Tables"]
-              
-              if(unique_id=="SYMBOL"){
-                
-                kME <- mapAlias2Symbol(features=kME, unique_id_col=2, 
-                                       tables_dir, keep_all=T, fill_NAs=T)
-                
-              } else {
-                
-                kME <- map2Any(features=kME, unique_id, map_to="SYMBOL", 
-                               unique_id_col=2, platform, tables_dir, 
-                               keep_all=T)
-                
-              }
-              
-              kME <- kME[,!is.element(colnames(kME), "SYMBOL.y")]
-              
-              kME <- kME |> 
-                tidyr::separate_rows(SYMBOL, sep=" \\| ") 
-              
-              return(data.frame(SYMBOL=unique(kME$SYMBOL),
-                                Dataset=modules$Dataset[j], Network=modules$Network[j],
-                                SetName=modules$SetName[j], Module=modules$Module[j],
-                                Mod_Def=modules$Mod_Def[j]))
-              
-            })
-            
-            return(do.call(rbind, gene_list))
-            
-          } 
-          
-        } 
-        
-      } 
-      
-    }
-    
-  })
-  example5 <- do.call(rbind, example5_list)
-  
-  example5 <- example5 |>
-    na_if("NA") |>
-    dplyr::filter(!is.na(SYMBOL))
-  
-  write.csv(example5, file=paste0("sheet2_example5_query_results_modules_", Sys.Date(), ".csv"), row.names=F)
-  
-  example5 <- example5 |> 
-    dplyr::group_by(SYMBOL) |> 
-    dplyr::summarise(No.Datasets=n()) |>
-    dplyr::arrange(desc(No.Datasets))
-  
-  print("Sheet 2 example 5 complete.")
-  
-  write.csv(example5, file=paste0("sheet2_example5_query_results_", Sys.Date(), ".csv"), row.names=F)
-  
-  sheet2_queries$RE_Count[5] <- nrow(example5)
-  
-  ############################################# Save query counts ############################################# 
-  
-  write.csv(sheet2_queries, file=paste0("sheet2_query_counts_", Sys.Date(), ".csv"), row.names=F)
-  
-}
-
 search_queries_sheet1 <- function(data_dirs){
   
   sheet1_queries <- data.frame(Query.No=c(1:2, 4:12, 14:16, 18:20), 
@@ -1577,7 +550,8 @@ search_queries_sheet1 <- function(data_dirs){
             }
             
             kME <- kME[,!is.element(colnames(kME), "SYMBOL.y")]
-            kME <- kME |> na_if("NA") |> na_if("") |>
+            kME <- kME[kME == "NA" | kME == ""] <- NA
+            kME <- kME |>
               tidyr::separate_rows(SYMBOL, sep=" \\| ") |>
               as.data.frame()
             
@@ -1897,8 +871,8 @@ search_queries_sheet1 <- function(data_dirs){
   
   write.csv(example12, file=paste0("sheet1_example12_query_results_modules_", Sys.Date(), ".csv"), row.names=F)
   
+  example12[example12 == "NA"] <- NA
   example12 <- example12 |> 
-    na_if("NA") |>
     dplyr::filter(!is.na(SYMBOL)) |>
     dplyr::group_by(SYMBOL) |> 
     dplyr::summarise(No.Datasets=n()) |>
@@ -1998,8 +972,8 @@ search_queries_sheet1 <- function(data_dirs){
   
   write.csv(example14, file=paste0("sheet1_example14_query_results_modules_", Sys.Date(), ".csv"), row.names=F)
   
+  example14[example14 == "NA"] <- NA
   example14 <- example14 |> 
-    na_if("NA") |>
     dplyr::filter(!is.na(ENTREZID)) |>
     dplyr::group_by(ENTREZID) |> 
     dplyr::summarise(No.Datasets=n()) |>
@@ -2094,8 +1068,8 @@ search_queries_sheet1 <- function(data_dirs){
   })
   example15 <- do.call(rbind, example15_list)
   
+  example15[example15 == "NA"] <- NA
   example15 <- example15 |>
-    na_if("NA") |>
     dplyr::filter(!is.na(ENZYME))
     
   write.csv(example15, file=paste0("sheet1_example15_query_results_modules_", Sys.Date(), ".csv"), row.names=F)
@@ -2172,7 +1146,8 @@ search_queries_sheet1 <- function(data_dirs){
               kME <- map2Any(features=kME, unique_id, map_to="OMIM", 
                              unique_id_col=2, platform, tables_dir, 
                              keep_all=T)
-              kME <- kME |> na_if("NA") |> na_if("") |>
+              kME[kME == "NA" | kME == ""] <- NA
+              kME <- kME |>
                 tidyr::separate_rows(OMIM, sep=" \\| ") |>
                 dplyr::filter(!is.na(OMIM)) |>
                 as.data.frame()
@@ -2211,8 +1186,8 @@ search_queries_sheet1 <- function(data_dirs){
     
     write.csv(example16, file=paste0("sheet1_example16_query_results_modules_", Sys.Date(), ".csv"), row.names=F)
     
+    example16[example16 == "NA"] <- NA
     example16 <- example16 |> 
-      na_if("NA") |>
       dplyr::filter(!is.na(OMIM)) |>
       dplyr::group_by(OMIM) |> 
       dplyr::summarise(No.Datasets=n()) |>
@@ -2445,6 +1420,1040 @@ search_queries_sheet1 <- function(data_dirs){
   
 }
 
+search_queries_sheet2 <- function(data_dirs){
+  
+  sheet2_queries <- data.frame(Query.No=1:5, 
+                               Query=c("Find all human brain samples with any kind of disease (disease DOES NOT EQUAL Normal)",
+                                       "Find all covariation networks from human samples without disease where minimum module size >= 10 and # modules ≥ 50",
+                                       "Find all covariation modules in datasets consisting SOLELY of normal adult human samples that contain the following genes: BUB1, MKI67, PBK, and WEE1",
+                                       "Find all covariation modules in datasets consisting SOLELY of human normal brain samples that are significantly enriched with microglial markers",
+                                       "Export a list of unique gene symbols for covariation modules identified in datasets that include normal adult male brain samples and are maximally enriched with markers of radial glia (cell type)"),
+                               RE_Count=NA)
+  
+  ############################################# Sheet 2, example 1 ############################################# 
+  
+  print("Starting sheet 2 example 1.")
+  
+  ## Find all human brain samples with any kind of disease (disease DOES NOT EQUAL Normal)
+  
+  DC_dirs <- unique(sapply(strsplit(na.omit(unique(data_dirs$DC_dir)), "/"), function(x){
+    paste(x[-length(x)], collapse="/")
+  }))
+  
+  example1_list <- lapply(1:length(DC_dirs), function(i){
+    
+    DC_attr <- read.csv(list.files(path=DC_dirs[i], pattern="DC_attributes", full.names=T))
+    sampleinfo <- fread(list.files(path=DC_dirs[i], pattern="sample_attributes", 
+                                   full.names=T), data.table=F)
+    sampleinfo <- sampleinfo[get_brain_samples(uberon_vec=sampleinfo$UBERON_ID),]
+    sampleinfo[sampleinfo == ""] <- NA
+    sampleinfo |>
+      dplyr::filter(sampleinfo$Disease!="Normal") |>
+      dplyr::mutate(Data_Collection=DC_attr[1,2]) |>
+      dplyr::select(Data_Collection, Label, 
+                    Organism, Tissue, Disease)
+    
+  })
+  example1 <- do.call(rbind, example1_list)
+  
+  print("Sheet 2 example 1 complete.")
+  
+  write.csv(example1, file=paste0("sheet2_example1_query_results_", Sys.Date(), ".csv"), row.names=F)
+  
+  sheet2_queries$RE_Count[1] <- nrow(example1)
+  
+  ############################################# Sheet 2, example 2 ############################################# 
+  
+  print("Starting sheet 2 example 2.")
+  
+  ## Find all covariation networks from human samples without disease where minimum module size >= 10 and # modules ≥ 50
+  
+  example2_list <- lapply(1:nrow(data_dirs), function(i){
+    
+    if(!is.na(data_dirs$FM_dir[i])){
+      
+      sampleinfo <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="sample_attributes", full.names=T)[1])
+      
+      if(sum(is.element(sampleinfo$Disease, "Normal"))>0){
+        
+        networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
+        networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
+        minsize <- as.numeric(gsub("minSize", "", sapply(strsplit(networks, "_"), function(x){
+          x[grep("minSize", x)]
+        })))
+        networks <- networks[minsize>=10]
+        
+        network_list <- lapply(1:length(networks), function(j){
+          
+          modstats <- fread(list.files(path=networks[j], pattern="Module_statistics", full.names=T)[1], data.table=F)
+          
+          if(nrow(modstats)>=50){
+            DS_attr <- read.csv(list.files(path=data_dirs$FM_dir[i], pattern="attributes", full.names=T))
+            network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
+            return(data.frame(Dataset=data_dirs$Title[i], Network=network, 
+                              No.Modules=nrow(modstats)))
+          } 
+          
+        }) 
+        
+        return(do.call(rbind, network_list))
+        
+      } 
+      
+    } 
+    
+  })
+  example2 <- do.call(rbind, example2_list)
+  
+  print("Sheet 2 example 2 complete.")
+  
+  write.csv(example2, file=paste0("sheet2_example2_query_results_", Sys.Date(), ".csv"), row.names=F)
+  
+  sheet2_queries$RE_Count[2] <- nrow(example2)
+  
+  ############################################# Sheet 2, example 3 ############################################# 
+  
+  print("Starting sheet 2 example 3.")
+  
+  ## Find all covariation modules in datasets consisting SOLELY of normal adult human samples that contain 
+  ## the following genes: BUB1, MKI67, PBK, and WEE1 (ranked by Jaccard index)
+  
+  feature_list <- c("BUB1", "MKI67", "PBK", "WEE1")
+  
+  example3_list <- lapply(1:nrow(data_dirs), function(i){
+    
+    if(!is.na(data_dirs$FM_dir[i])){
+      
+      sampleinfo <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="sample_attributes", full.names=T)[1])
+      
+      brain_samples <- get_brain_samples(uberon_vec=sampleinfo$UBERON_ID)
+      
+      if(length(brain_samples)==nrow(sampleinfo)){
+        
+        if(is.element("Developmental_Epoch", colnames(sampleinfo))){ 
+          
+          if(length(intersect(grep("Normal", sampleinfo$Disease), 
+                              grep("adult", sampleinfo$Developmental_Epoch, ignore.case=T)))==nrow(sampleinfo)){
+            
+            networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
+            networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
+            
+            DS_attr <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="DS_attributes", full.names=T)[1])
+            unique_id <- DS_attr$Value[DS_attr$Attribute=="Unique Identifier"]
+            platform <- DS_attr$Value[DS_attr$Attribute=="Mapping Tables"]
+            
+            networks_list <- future_lapply(1:length(networks), function(j){
+              
+              kME <- fread(list.files(path=networks[j], pattern="kME", full.names=T), data.table=F)
+              
+              if(unique_id=="SYMBOL"){
+                
+                kME <- mapAlias2Symbol(features=kME, unique_id_col=2, 
+                                       tables_dir, keep_all=T, fill_NAs=T)
+                
+              } else {
+                
+                kME <- map2Any(features=kME, unique_id, map_to="SYMBOL", 
+                               unique_id_col=2, platform, tables_dir, 
+                               keep_all=T)
+                
+              }
+              
+              kME <- kME[,!is.element(colnames(kME), "SYMBOL.y")]
+              kME[kME == "NA" | kME == ""] <- NA
+              kME <- kME |>
+                tidyr::separate_rows(SYMBOL, sep=" \\| ") |>
+                as.data.frame()
+              
+              feature_mods <- covariation_feature_search(kME, feature_list, feature_type="SYMBOL", mod_def="Any", and_or="AND")
+              
+              if(!is.null(feature_mods)){
+                network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
+                return(data.frame(Dataset=data_dirs$Title[i], 
+                                  Network=network, feature_mods))
+              }
+              
+            }, future.seed=T) 
+            
+            return(do.call(rbind, networks_list))
+            
+          }
+          
+        }
+        
+      }
+      
+    } 
+    
+  })
+  example3 <- do.call(rbind, example3_list)
+  
+  if(!is.null(example3)>0){
+    
+    print("Sheet 2 example 3 complete.")
+    write.csv(example3, file=paste0("sheet2_example3_query_results_", Sys.Date(), ".csv"), row.names=F)
+    sheet2_queries$RE_Count[3] <- nrow(example3)
+    
+  } else {
+    
+    print("No results found for example query 3.")
+    sheet2_queries$RE_Count[3] <- 0
+    
+  }
+  
+  ############################################# Sheet 2, example 4 ############################################# 
+  
+  print("Starting sheet 2 example 4.")
+  
+  ## Find all covariation modules in datasets consisting SOLELY of human normal brain samples 
+  ## that are significantly enriched with microglial markers, ranked by enrichment P-values
+  
+  example4_list <- lapply(1:nrow(data_dirs), function(i){
+    
+    if(!is.na(data_dirs$FM_dir[i])){
+      
+      sampleinfo <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="sample_attributes", full.names=T)[1])
+      
+      brain_samples <- get_brain_samples(uberon_vec=sampleinfo$UBERON_ID)
+      
+      if(length(intersect(brain_samples, grep("Normal", sampleinfo$Disease, ignore.case=T)))==nrow(sampleinfo)){
+        
+        networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
+        networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
+
+        networks_list <- future_lapply(1:length(networks), function(j){
+          
+          enrich_dirs <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
+          enrich_out <- covariation_enrich_search(enrich_dirs, setname="microglia")
+          if(nrow(enrich_out)>0){
+            network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
+            return(data.frame(Dataset=data_dirs$Title[i], Network=network, enrich_out))
+          }
+          
+        }, future.seed=T) 
+        
+        return(do.call(rbind, networks_list))
+        
+      }
+      
+    } 
+    
+  })
+  example4 <- do.call(rbind, example4_list)
+  
+  example4$Mod_ID <- paste(example4$Dataset, example4$Network, 
+                           example4$Module, example4$Mod_Def)
+  
+  example4 <- example4 |> 
+    dplyr::group_by(Mod_ID) |>
+    dplyr::slice_min(Pval, with_ties=T) |> 
+    dplyr::arrange(Pval)
+  
+  write.csv(example4, file=paste0("sheet2_example4_query_results_gene_sets_", Sys.Date(), ".csv"), row.names=F)
+  
+  example4 <- example4 |> 
+    dplyr::group_by(Mod_ID) |>
+    dplyr::slice_min(Pval, with_ties=F)
+  
+  print("Sheet 2 example 4 complete.")
+  
+  write.csv(example4, file=paste0("sheet2_example4_query_results_", Sys.Date(), ".csv"), row.names=F)
+  
+  sheet2_queries$RE_Count[4] <- nrow(example4)
+  
+  ############################################# Sheet 2, example 5 ############################################# 
+  
+  print("Starting sheet 2 example 5.")
+  
+  ## Export a list of unique gene symbols for covariation modules identified in datasets that include normal
+  ## adult male brain samples and are maximally enriched with markers of radial glia (cell type), ranked by kME / Fidelity
+  
+  example5_list <- lapply(1:nrow(data_dirs), function(i){
+    
+    if(!is.na(data_dirs$FM_dir[i])){
+      
+      sampleinfo <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="sample_attributes", full.names=T)[1])
+      
+      if(is.element("Developmental_Epoch", colnames(sampleinfo))){ 
+        
+        brain_samples <- get_brain_samples(uberon_vec=sampleinfo$UBERON_ID)
+        
+        if(length(intersect(brain_samples, 
+                            intersect(grep("M", sampleinfo$Sex), 
+                                      intersect(grep("adult", sampleinfo$Developmental_Epoch, ignore.case=T), 
+                                                grep("Normal", sampleinfo$Disease)))))>0){
+          
+          networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
+          networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
+          
+          networks_list <- future_lapply(1:length(networks), function(j){
+            
+            # print(paste(i, j))
+            
+            enrich_dirs <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
+            enrich_out <- covariation_enrich_search(enrich_dirs, setname="radial_glia")
+            if(nrow(enrich_out)>0){
+              DS_attr <- list.files(path=data_dirs$SN_dir[i], pattern="DS_attributes", full.names=T)[1]
+              network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
+              return(data.frame(Dataset=data_dirs$Title[i], Network=network, enrich_out, 
+                                DS_Attr=DS_attr))
+            }
+            
+          }, future.seed=T)
+          modules <- do.call(rbind, networks_list)
+          
+          if(nrow(modules)>0){
+            
+            modules <- modules |> dplyr::slice_min(Pval, with_ties=T)
+            
+            ## Get module genes
+            
+            gene_list <- lapply(1:nrow(modules), function(j){
+              
+              kME <- fread(list.files(path=file.path(data_dirs$FM_dir[i], modules$Network[j]), 
+                                      pattern="kME", full.names=T), data.table=F)
+              col <- kME[,grep(toupper(modules$Mod_Def[j]), toupper(colnames(kME)))]
+              kME <- kME[is.element(col, as.character(modules$Module[j])),]
+              
+              ## Map identifiers to SYMBOL:
+              
+              DS_attr <- read.csv(modules$DS_Attr[j])
+              unique_id <- DS_attr$Value[DS_attr$Attribute=="Unique Identifier"]
+              platform <- DS_attr$Value[DS_attr$Attribute=="Mapping Tables"]
+              
+              if(unique_id=="SYMBOL"){
+                
+                kME <- mapAlias2Symbol(features=kME, unique_id_col=2, 
+                                       tables_dir, keep_all=T, fill_NAs=T)
+                
+              } else {
+                
+                kME <- map2Any(features=kME, unique_id, map_to="SYMBOL", 
+                               unique_id_col=2, platform, tables_dir, 
+                               keep_all=T)
+                
+              }
+              
+              kME <- kME[,!is.element(colnames(kME), "SYMBOL.y")]
+              
+              kME <- kME |> 
+                tidyr::separate_rows(SYMBOL, sep=" \\| ") 
+              
+              return(data.frame(SYMBOL=unique(kME$SYMBOL),
+                                Dataset=modules$Dataset[j], Network=modules$Network[j],
+                                SetName=modules$SetName[j], Module=modules$Module[j],
+                                Mod_Def=modules$Mod_Def[j]))
+              
+            })
+            
+            return(do.call(rbind, gene_list))
+            
+          } 
+          
+        } 
+        
+      } 
+      
+    }
+    
+  })
+  example5 <- do.call(rbind, example5_list)
+  
+  example5[example5 == "NA"] <- NA
+  example5 <- example5 |>
+    dplyr::filter(!is.na(SYMBOL))
+  
+  write.csv(example5, file=paste0("sheet2_example5_query_results_modules_", Sys.Date(), ".csv"), row.names=F)
+  
+  example5 <- example5 |> 
+    dplyr::group_by(SYMBOL) |> 
+    dplyr::summarise(No.Datasets=n()) |>
+    dplyr::arrange(desc(No.Datasets))
+  
+  print("Sheet 2 example 5 complete.")
+  
+  write.csv(example5, file=paste0("sheet2_example5_query_results_", Sys.Date(), ".csv"), row.names=F)
+  
+  sheet2_queries$RE_Count[5] <- nrow(example5)
+  
+  ############################################# Save query counts ############################################# 
+  
+  write.csv(sheet2_queries, file=paste0("sheet2_query_counts_", Sys.Date(), ".csv"), row.names=F)
+  
+}
+
+search_queries_covariation <- function(data_dirs){
+  
+  covariation_queries <- data.frame(Query.No=1:11, 
+                                    Result_Type=c("Covariation modules", "Covariation modules", "Covariation modules",
+                                                  "Covariation modules (all attributes checked)", "Covariation modules (all attributes checked)",
+                                                  "Covariation modules (all attributes checked)", "Covariation modules (all attributes checked)",
+                                                  "Covariation modules", "Covariation modules", "Covariation modules", "Covariation modules"),
+                                    Module_Definition=c("Any", "Any", "Bonferroni", "Bonferroni", "Bonferroni", 
+                                                        "Bonferroni", "Seed", "Any", "Bonferroni", "Seed", "Any"),
+                                    Set_ID=c("MOSET7061", "MOSET6870", "M2454_v7.4", "MOSET6935", "MOSET7032",
+                                             "M1694_v7.4", NA, "M9210_v7.4", "MOSET6808", NA, NA),
+                                    Enrichment_Pval=c(1e-10, 1e-10, 1e-20, 1e-20, 1e-20, 1e-10, NA, 1e-5, 1e-20, NA, NA),
+                                    Sample_Match_Percent=c(NA, NA, NA, NA, NA, NA, NA, NA, 100, NA, NA),
+                                    Disease=c(NA, NA, NA, NA, NA, NA, NA, NA, "glioblastoma (including child terms)", NA, NA),
+                                    Feature_Input_Type=c(NA, NA, NA, NA, NA, NA, "Gene Symbol", NA, NA, "Gene Symbol", "Gene Symbol"),
+                                    Feature_Input_ID=c(NA, NA, NA, NA, NA, NA, 
+                                                       c("IDH1, OLIG1, OLIG2, ASCL1 (is set to AND)"), NA, NA,
+                                                       c("OLIG1, OLIG2, ASCL1, EGFR, PCDH15, ERBB4, SLC1A2 (is set to AND)"),
+                                                       c("SHD, OLIG1, OLIG2, SOX4, SOX8 (is set to AND)")),
+                                    RE_Count=NA)
+  
+  ############################################# Covariation, example 1 ############################################# 
+  
+  ## Result Type = Covariation Module
+  ## Module Definition = Any
+  ## Set ID = MOSET7061
+  ## Enrichment P-value < 1e-10
+  
+  setid <- "MOSET7061"
+  pval_cut <- 1e-10
+  
+  print("Starting covariation example 1.")
+  
+  example1_list <- lapply(1:nrow(data_dirs), function(i){
+    
+    if(!is.na(data_dirs$FM_dir[i])){
+      
+      networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
+      networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
+      
+      networks_list <- future_lapply(1:length(networks), function(j){
+        
+        enrich_dirs <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
+        enrich_out <- covariation_enrich_search(enrich_dirs, setid=setid, pval_cut=pval_cut)
+        if(nrow(enrich_out)>0){
+          network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
+          return(data.frame(Dataset=data_dirs$Title[i], Network=network, enrich_out))
+        }
+        
+      }, future.seed=T) 
+      
+      return(do.call(rbind, networks_list))
+      
+    } 
+    
+  })
+  example1 <- do.call(rbind, example1_list)
+  
+  write.csv(example1, file=paste0("covariation_example1_query_results_all_siginificant_", Sys.Date(), ".csv"), row.names=F)
+  
+  covariation_queries$RE_Count[1] <- paste("All significant:", nrow(example1))
+  
+  example1 <- example1 |>
+    dplyr::group_by(Dataset) |>
+    dplyr::slice_min(Pval, with_ties=T)
+  
+  print("Covariation example 1 complete.")
+  
+  write.csv(example1, file=paste0("covariation_example1_query_results_most_significant_", Sys.Date(), ".csv"), row.names=F)
+  
+  covariation_queries$RE_Count[1] <- paste(covariation_queries$RE_Count[1], "| Most significant:", nrow(example1))
+  
+  ############################################# Covariation, example 2 ############################################# 
+  
+  ## Result Type = Covariation Module
+  ## Module Definition = Any
+  
+  setid <- "MOSET6870"
+  pval_cut <- 1e-10
+  
+  print("Starting covariation example 2.")
+  
+  example2_list <- lapply(1:nrow(data_dirs), function(i){
+    
+    if(!is.na(data_dirs$FM_dir[i])){
+      
+      networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
+      networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
+      
+      networks_list <- future_lapply(1:length(networks), function(j){
+        
+        enrich_dirs <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
+        enrich_out <- covariation_enrich_search(enrich_dirs, setid=setid, pval_cut=pval_cut)
+        if(nrow(enrich_out)>0){
+          network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
+          return(data.frame(Dataset=data_dirs$Title[i], Network=network, enrich_out))
+        }
+        
+      }, future.seed=T) 
+      
+      return(do.call(rbind, networks_list))
+      
+    } 
+    
+  })
+  example2 <- do.call(rbind, example2_list)
+  
+  if(!is.null(example2)>0){
+    
+    write.csv(example2, file=paste0("covariation_example2_query_results_all_siginificant_", Sys.Date(), ".csv"), row.names=F)
+    
+    covariation_queries$RE_Count[2] <- paste("All significant:", nrow(example2))
+    
+    example2 <- example2 |>
+      dplyr::group_by(Dataset) |>
+      dplyr::slice_min(Pval, with_ties=T)
+    
+    print("Covariation example 2 complete.")
+    
+    write.csv(example2, file=paste0("covariation_example2_query_results_most_significant_", Sys.Date(), ".csv"), row.names=F)
+    
+    covariation_queries$RE_Count[2] <- paste(covariation_queries$RE_Count[2], "| Most significant:", nrow(example2))
+    
+  } else {
+    
+    print("No results found for example query 2.")
+    covariation_queries$RE_Count[2] <- 0
+    
+  }
+  
+  ############################################# Covariation, example 3 ############################################# 
+  
+  ## Result Type = Covariation Module
+  ## Module Definition = Bonferroni
+  
+  setid <- "M2454_v7.4"
+  pval_cut <- 1e-20
+  
+  print("Starting covariation example 3.")
+  
+  example3_list <- lapply(1:nrow(data_dirs), function(i){
+    
+    if(!is.na(data_dirs$FM_dir[i])){
+      
+      networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
+      networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
+      
+      networks_list <- future_lapply(1:length(networks), function(j){
+        
+        enrich_dirs <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
+        enrich_out <- covariation_enrich_search(enrich_dirs, setid=setid, pval_cut=pval_cut)
+        enrich_out <- enrich_out[enrich_out$Mod_Def=="TOPMODPOSBC",]
+        if(nrow(enrich_out)>0){
+          network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
+          return(data.frame(Dataset=data_dirs$Title[i], Network=network, enrich_out))
+        }
+        
+      }, future.seed=T) 
+      
+      return(do.call(rbind, networks_list))
+      
+    } 
+    
+  })
+  example3 <- do.call(rbind, example3_list)
+  
+  write.csv(example3, file=paste0("covariation_example3_query_results_all_siginificant_", Sys.Date(), ".csv"), row.names=F)
+  
+  covariation_queries$RE_Count[3] <- paste("All significant:", nrow(example3))
+  
+  example3 <- example3 |>
+    dplyr::group_by(Dataset) |>
+    dplyr::slice_min(Pval, with_ties=T)
+  
+  print("Covariation example 3 complete.")
+  
+  write.csv(example3, file=paste0("covariation_example3_query_results_most_significant_", Sys.Date(), ".csv"), row.names=F)
+  
+  covariation_queries$RE_Count[3] <- paste(covariation_queries$RE_Count[3], "| Most significant:", nrow(example3))
+  
+  ############################################# Covariation, example 4 ############################################# 
+  
+  ## Result Type = Covariation modules (all attributes checked)
+  ## Module Defition = Bonferroni
+  
+  setid <- "MOSET6935"
+  pval_cut <- 1e-20
+  
+  print("Starting covariation example 4.")
+  
+  example4_list <- lapply(1:nrow(data_dirs), function(i){
+    
+    if(!is.na(data_dirs$FM_dir[i])){
+      
+      networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
+      networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
+      
+      networks_list <- future_lapply(1:length(networks), function(j){
+        
+        enrich_dirs <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
+        enrich_out <- covariation_enrich_search(enrich_dirs, setid=setid, pval_cut=pval_cut)
+        enrich_out <- enrich_out[enrich_out$Mod_Def=="TOPMODPOSBC",]
+        if(nrow(enrich_out)>0){
+          network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
+          return(data.frame(Dataset=data_dirs$Title[i], Network=network, enrich_out))
+        }
+        
+      }, future.seed=T) 
+      
+      return(do.call(rbind, networks_list))
+      
+    } 
+    
+  })
+  example4 <- do.call(rbind, example4_list)
+  
+  write.csv(example4, file=paste0("covariation_example4_query_results_all_siginificant_", Sys.Date(), ".csv"), row.names=F)
+  
+  covariation_queries$RE_Count[4] <- paste("All significant:", nrow(example4))
+  
+  example4 <- example4 |>
+    dplyr::group_by(Dataset) |>
+    dplyr::slice_min(Pval, with_ties=T)
+  
+  print("Covariation example 4 complete.")
+  
+  write.csv(example4, file=paste0("covariation_example4_query_results_most_significant_", Sys.Date(), ".csv"), row.names=F)
+  
+  covariation_queries$RE_Count[4] <- paste(covariation_queries$RE_Count[4], "| Most significant:", nrow(example4))
+  
+  ############################################# Covariation, example 5 ############################################# 
+  
+  ## Result Type = Covariation modules (all attributes checked)
+  ## Module Defition = Bonferroni
+  
+  setid <- "MOSET7032"
+  pval_cut <- 1e-20
+  
+  print("Starting covariation example 5.")
+  
+  example5_list <- lapply(1:nrow(data_dirs), function(i){
+    
+    if(!is.na(data_dirs$FM_dir[i])){
+      
+      networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
+      networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
+      
+      networks_list <- future_lapply(1:length(networks), function(j){
+        
+        enrich_dirs <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
+        enrich_out <- covariation_enrich_search(enrich_dirs, setid=setid, pval_cut=pval_cut)
+        enrich_out <- enrich_out[enrich_out$Mod_Def=="TOPMODPOSBC",]
+        if(nrow(enrich_out)>0){
+          network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
+          return(data.frame(Dataset=data_dirs$Title[i], Network=network, enrich_out))
+        }
+        
+      }, future.seed=T) 
+      
+      return(do.call(rbind, networks_list))
+      
+    } 
+    
+  })
+  example5 <- do.call(rbind, example5_list)
+  
+  write.csv(example5, file=paste0("covariation_example5_query_results_all_siginificant_", Sys.Date(), ".csv"), row.names=F)
+  
+  covariation_queries$RE_Count[5] <- paste("All significant:", nrow(example5))
+  
+  example5 <- example5 |>
+    dplyr::group_by(Dataset) |>
+    dplyr::slice_min(Pval, with_ties=T)
+  
+  print("Covariation example 5 complete.")
+  
+  write.csv(example5, file=paste0("covariation_example5_query_results_most_significant_", Sys.Date(), ".csv"), row.names=F)
+  
+  covariation_queries$RE_Count[5] <- paste(covariation_queries$RE_Count[5], "| Most significant:", nrow(example5))
+  
+  
+  ############################################# Covariation, example 6 ############################################# 
+  
+  ## Result Type = Covariation modules (all attributes checked)
+  ## Module Defition = Bonferroni
+  
+  setid <- "M1694_v7.4"
+  pval_cut <- 1e-10
+  
+  print("Starting covariation example 6.")
+  
+  example6_list <- lapply(1:nrow(data_dirs), function(i){
+    
+    if(!is.na(data_dirs$FM_dir[i])){
+      
+      networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
+      networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
+      
+      networks_list <- future_lapply(1:length(networks), function(j){
+        
+        enrich_dirs <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
+        enrich_out <- covariation_enrich_search(enrich_dirs, setid=setid, pval_cut=pval_cut)
+        enrich_out <- enrich_out[enrich_out$Mod_Def=="TOPMODPOSBC",]
+        if(nrow(enrich_out)>0){
+          network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
+          return(data.frame(Dataset=data_dirs$Title[i], Network=network, enrich_out))
+        }
+        
+      }, future.seed=T) 
+      
+      return(do.call(rbind, networks_list))
+      
+    } 
+    
+  })
+  example6 <- do.call(rbind, example6_list)
+  
+  if(!is.null(example6)){
+    
+    write.csv(example6, file=paste0("covariation_example6_query_results_all_siginificant_", Sys.Date(), ".csv"), row.names=F)
+    
+    covariation_queries$RE_Count[6] <- paste("All significant:", nrow(example6))
+    
+    example6 <- example6 |>
+      dplyr::group_by(Dataset) |>
+      dplyr::slice_min(Pval, with_ties=T)
+    
+    print("Covariation example 6 complete.")
+    
+    write.csv(example6, file=paste0("covariation_example6_query_results_most_significant_", Sys.Date(), ".csv"), row.names=F)
+    
+    covariation_queries$RE_Count[6] <- paste(covariation_queries$RE_Count[6], "| Most significant:", nrow(example6))
+    
+  } else {
+    print("No results found for example query 6.")
+    covariation_queries$RE_Count[6] <- 0
+  }
+  
+  ############################################# Covariation, example 7 #############################################
+  
+  ## Result Type = Covariation modules (all attributes checked)
+  ## Module Defition = Seed
+  ## Feature Input Type: Gene Symbol
+  ## Feature Input IDs: IDH1, OLIG1, OLIG2, ASCL1 (Is set to AND)
+  
+  feature_list <- c("IDH1", "OLIG1", "OLIG2", "ASCL1")
+  
+  print("Starting covariation example 7.")
+  
+  example7_list <- lapply(1:nrow(data_dirs), function(i){
+    
+    if(!is.na(data_dirs$FM_dir[i])){
+      
+      networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
+      networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
+      
+      DS_attr <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="DS_attributes", full.names=T)[1])
+      unique_id <- DS_attr$Value[DS_attr$Attribute=="Unique Identifier"]
+      platform <- DS_attr$Value[DS_attr$Attribute=="Mapping Tables"]
+      
+      networks_list <- future_lapply(1:length(networks), function(j){
+        
+        kME <- fread(list.files(path=networks[j], pattern="kME", full.names=T), data.table=F)
+        
+        if(unique_id=="SYMBOL"){
+          
+          kME <- mapAlias2Symbol(features=kME, unique_id_col=2, 
+                                 tables_dir, keep_all=T, fill_NAs=T)
+          
+        } else {
+          
+          kME <- map2Any(features=kME, unique_id, map_to="SYMBOL", 
+                         unique_id_col=2, platform, tables_dir, 
+                         keep_all=T)
+          
+        }
+        
+        kME <- kME[,!is.element(colnames(kME), "SYMBOL.y")]
+        kME[kME == "NA" | kME == ""] <- NA
+        kME <- kME |>
+          tidyr::separate_rows(SYMBOL, sep=" \\| ") |>
+          as.data.frame()
+        
+        feature_mods <- covariation_feature_search(kME, feature_list, feature_type="SYMBOL", mod_def="Seed", and_or="AND")
+        
+        if(!is.null(feature_mods)){
+          network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
+          return(data.frame(Dataset=data_dirs$Title[i], 
+                            Network=network, feature_mods))
+        }
+        
+      }, future.seed=T) 
+      
+      return(do.call(rbind, networks_list))
+      
+    } 
+    
+  })
+  example7 <- do.call(rbind, example7_list)
+  
+  if(!is.null(example7)>0){
+    
+    print("Covariation example 7 complete.")
+    write.csv(example7, file=paste0("covariation_example7_query_results_", Sys.Date(), ".csv"), row.names=F)
+    covariation_queries$RE_Count[7] <- nrow(example7)
+    
+  } else {
+    print("No results found for example query 7.")
+    covariation_queries$RE_Count[7] <- 0
+  }
+  
+  ############################################# Covariation, example 8 ############################################# 
+  
+  ## Result Type = Covariation modules
+  ## Module Defition = Any
+  
+  setid <- "M9210_v7.4"
+  pval_cut <- 1e-5
+  
+  print("Starting covariation example 8.")
+  
+  example8_list <- lapply(1:nrow(data_dirs), function(i){
+    
+    if(!is.na(data_dirs$FM_dir[i])){
+      
+      networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
+      networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
+      
+      networks_list <- future_lapply(1:length(networks), function(j){
+        
+        enrich_dirs <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
+        enrich_out <- covariation_enrich_search(enrich_dirs, setid=setid, pval_cut=pval_cut)
+        if(nrow(enrich_out)>0){
+          network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
+          return(data.frame(Dataset=data_dirs$Title[i], Network=network, enrich_out))
+        }
+        
+      }, future.seed=T) 
+      
+      return(do.call(rbind, networks_list))
+      
+    } 
+    
+  })
+  example8 <- do.call(rbind, example8_list)
+  
+  write.csv(example8, file=paste0("covariation_example8_query_results_all_siginificant_", Sys.Date(), ".csv"), row.names=F)
+  
+  covariation_queries$RE_Count[8] <- paste("All significant:", nrow(example8))
+  
+  example8 <- example8 |>
+    dplyr::group_by(Dataset) |>
+    dplyr::slice_min(Pval, with_ties=T)
+  
+  print("Covariation example 8 complete.")
+  
+  write.csv(example8, file=paste0("covariation_example8_query_results_most_significant_", Sys.Date(), ".csv"), row.names=F)
+  
+  covariation_queries$RE_Count[8] <- paste(covariation_queries$RE_Count[8], "| Most significant:", nrow(example8))
+  
+  ############################################# Covariation, example 9 ############################################# 
+  
+  ## Result Type = Covariation modules
+  ## Module Defition = Bonferroni
+  ## Disease = glioblastoma (including child terms)
+  ## Sample Match Percent = 100
+  
+  setid <- "MOSET6808"
+  pval_cut <- 1e-20
+  
+  print("Starting covariation example 9.")
+  
+  example9_list <- lapply(1:nrow(data_dirs), function(i){
+    
+    if(!is.na(data_dirs$FM_dir[i])){
+      
+      sampleinfo <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="sample_attributes", full.names=T)[1])
+      
+      GBM_samples <- get_disease_samples(mondo_vec=sampleinfo$MONDO_ID, disease="glioblastoma")
+      
+      if(length(GBM_samples)==nrow(sampleinfo)){
+        
+        networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
+        networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
+        
+        networks_list <- future_lapply(1:length(networks), function(j){
+          
+          enrich_dirs <- list.files(path=networks[j], pattern="GSHyperG", full.names=T)
+          enrich_out <- covariation_enrich_search(enrich_dirs, setid=setid, pval_cut=pval_cut)
+          enrich_out <- enrich_out[enrich_out$Mod_Def=="TOPMODPOSBC",]
+          if(nrow(enrich_out)>0){
+            network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
+            return(data.frame(Dataset=data_dirs$Title[i], Network=network, enrich_out))
+          }
+          
+        }, future.seed=T) 
+        
+        return(do.call(rbind, networks_list))
+        
+      }
+      
+    } 
+    
+  })
+  example9 <- do.call(rbind, example9_list)
+  
+  write.csv(example9, file=paste0("covariation_example9_query_results_all_siginificant_", Sys.Date(), ".csv"), row.names=F)
+  
+  covariation_queries$RE_Count[9] <- paste("All significant:", nrow(example9))
+  
+  example9 <- example9 |>
+    dplyr::group_by(Dataset) |>
+    dplyr::slice_min(Pval, with_ties=T)
+  
+  print("Covariation example 9 complete.")
+  
+  write.csv(example9, file=paste0("covariation_example9_query_results_most_significant_", Sys.Date(), ".csv"), row.names=F)
+  
+  covariation_queries$RE_Count[9] <- paste(covariation_queries$RE_Count[9], "| Most significant:", nrow(example9))
+  
+  ############################################# Covariation, example 10 #############################################
+  
+  ## Result Type = Covariation modules
+  ## Module Defition = Seed
+  ## Feature Input Type: Gene Symbol
+  ## Feature Input IDs: OLIG1, OLIG2, ASCL1, EGFR, PCDH15, ERBB4, SLC1A2 (is set to AND)
+  
+  feature_list <- c("OLIG1", "OLIG2", "ASCL1", "EGFR", "PCDH15", "ERBB4", "SLC1A2")
+  
+  print("Starting covariation example 10.")
+  
+  example10_list <- lapply(1:nrow(data_dirs), function(i){
+    
+    if(!is.na(data_dirs$FM_dir[i])){
+      
+      networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
+      networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
+      
+      DS_attr <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="DS_attributes", full.names=T)[1])
+      unique_id <- DS_attr$Value[DS_attr$Attribute=="Unique Identifier"]
+      platform <- DS_attr$Value[DS_attr$Attribute=="Mapping Tables"]
+      
+      networks_list <- future_lapply(1:length(networks), function(j){
+        
+        kME <- fread(list.files(path=networks[j], pattern="kME", full.names=T), data.table=F)
+        
+        if(unique_id=="SYMBOL"){
+          
+          kME <- mapAlias2Symbol(features=kME, unique_id_col=2, 
+                                 tables_dir, keep_all=T, fill_NAs=T)
+          
+        } else {
+          
+          kME <- map2Any(features=kME, unique_id, map_to="SYMBOL", 
+                         unique_id_col=2, platform, tables_dir, 
+                         keep_all=T)
+          
+        }
+        
+        kME <- kME[,!is.element(colnames(kME), "SYMBOL.y")]
+        kME <- kME[kME == "NA" | kME == ""] <- NA
+        kME <- kME |>
+          tidyr::separate_rows(SYMBOL, sep=" \\| ") |>
+          as.data.frame()
+        
+        feature_mods <- covariation_feature_search(kME, feature_list, feature_type="SYMBOL", mod_def="Seed", and_or="AND")
+        
+        if(!is.null(feature_mods)){
+          network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
+          return(data.frame(Dataset=data_dirs$Title[i], 
+                            Network=network, feature_mods))
+        }
+        
+      }, future.seed=T) 
+      
+      return(do.call(rbind, networks_list))
+      
+    } 
+    
+  })
+  example10 <- do.call(rbind, example10_list)
+  
+  if(!is.null(example10)>0){
+    
+    print("Covariation example 10 complete.")
+    write.csv(example10, file=paste0("covariation_example10_query_results_", Sys.Date(), ".csv"), row.names=F)
+    covariation_queries$RE_Count[10] <- nrow(example10)
+    
+  } else {
+    print("No results found for example query 10.")
+    covariation_queries$RE_Count[10] <- 0
+  }
+  
+  ############################################# Covariation, example 11 #############################################
+  
+  ## Result Type = Covariation modules
+  ## Module Defition = Any
+  ## Feature Input Type: Gene Symbol
+  ## Feature Input IDs: SHD, OLIG1, OLIG2, SOX4, SOX8 (is set to AND)
+  
+  feature_list <- c("SHD", "OLIG1", "OLIG2", "SOX4", "SOX8")
+  
+  print("Starting covariation example 11.")
+  
+  example11_list <- lapply(1:nrow(data_dirs), function(i){
+    
+    if(!is.na(data_dirs$FM_dir[i])){
+      
+      networks <- list.files(path=data_dirs$FM_dir[i], pattern="signum", full.names=T)
+      networks <- networks[unlist(lapply(networks, function(x) length(list.files(path=x))>0))]
+      
+      DS_attr <- read.csv(list.files(path=data_dirs$SN_dir[i], pattern="DS_attributes", full.names=T)[1])
+      unique_id <- DS_attr$Value[DS_attr$Attribute=="Unique Identifier"]
+      platform <- DS_attr$Value[DS_attr$Attribute=="Mapping Tables"]
+      
+      networks_list <- future_lapply(1:length(networks), function(j){
+        
+        kME <- fread(list.files(path=networks[j], pattern="kME", full.names=T), data.table=F)
+        
+        if(unique_id=="SYMBOL"){
+          
+          kME <- mapAlias2Symbol(features=kME, unique_id_col=2, 
+                                 tables_dir, keep_all=T, fill_NAs=T)
+          
+        } else {
+          
+          kME <- map2Any(features=kME, unique_id, map_to="SYMBOL", 
+                         unique_id_col=2, platform, tables_dir, 
+                         keep_all=T)
+          
+        }
+        
+        kME <- kME[,!is.element(colnames(kME), "SYMBOL.y")]
+        kME[kME == "NA" | kME == ""] <- NA
+        kME <- kME |>
+          tidyr::separate_rows(SYMBOL, sep=" \\| ") |>
+          as.data.frame()
+        
+        feature_mods <- covariation_feature_search(kME, feature_list, feature_type="SYMBOL", mod_def="Any", and_or="AND")
+        
+        if(!is.null(feature_mods)){
+          network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
+          return(data.frame(Dataset=data_dirs$Title[i], 
+                            Network=network, feature_mods))
+        }
+        
+      }, future.seed=T) 
+      
+      return(do.call(rbind, networks_list))
+      
+    } 
+    
+  })
+  example11 <- do.call(rbind, example11_list)
+  
+  if(!is.null(example11)>0){
+    
+    print("Covariation example 11 complete.")
+    write.csv(example11, file=paste0("covariation_example11_query_results_", Sys.Date(), ".csv"), row.names=F)
+    covariation_queries$RE_Count[11] <- nrow(example11)
+    
+  } else {
+    print("No results found for example query 11.")
+    covariation_queries$RE_Count[11] <- 0
+  }
+  
+  ############################################# Save query counts #############################################
+  
+  write.csv(covariation_queries, file=paste0("covariation_query_counts_", Sys.Date(), ".csv"), row.names=F)
+  
+}
+
 covariation_enrich_search <- function(enrich_dirs, setname=NULL, setid=NULL, 
                                       pval_cut=.05, organism=NULL, category=NULL){
   
@@ -2521,7 +2530,7 @@ mod2list <- function(kME, feature_type, feature_list=NULL,
                      and_or=c("AND", "OR")){
   
   mod_col <- grep(mod_def, colnames(kME))
-  kME <- kME |> na_if("")
+  kME[kME == ""] <- NA
   kME <- kME[!is.na(kME[,mod_col]),]
   
   module_list <- tapply(kME[,feature_type], kME[,mod_col], "[")
@@ -2552,15 +2561,11 @@ get_brain_samples <- function(uberon_vec){
   id <- UBERON$id[UBERON$name=="brain"]
   brain_children_current <- unlist(UBERON$children[names(UBERON$children)==id], use.names=F) 
   
-  brain_children_all <- id
+  brain_children_all <- c(id, brain_children_current)
   brain_children_previous <- c()
   while(length(brain_children_previous)<length(brain_children_current)){
     brain_children_previous <- brain_children_current
-    brain_children_current <- unlist(
-      UBERON$children[is.element(names(UBERON$children), 
-                                 brain_children_previous)], 
-      use.names=F
-    )
+    brain_children_current <- unlist(UBERON$children[is.element(names(UBERON$children), brain_children_previous)], use.names=F)
     brain_children_all <- c(brain_children_all, brain_children_current)
   }
   brain_children <- unique(c(brain_children_previous, brain_children_all))
