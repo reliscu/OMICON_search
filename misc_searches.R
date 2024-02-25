@@ -32,7 +32,8 @@ pval_cut <- 1e-10
 feature_list <- c("MKI67", "BUB1", "CKAP2L")
 
 covariation_queries <- data.frame(Result_Type=c("Covariation modules"),
-                                  Module_Definition=c("Bonferroni"),
+                                  Enrichment_Module_Definition=c("Bonferroni"),
+                                  Feature_Module_Definition="Seed",
                                   Set_ID=c("M642_v7.4"),
                                   Enrichment_Pval=c(1e-10),
                                   Sample_Match_Percent=NA,
@@ -87,7 +88,7 @@ example_list <- lapply(1:nrow(data_dirs), function(i) {
         if(!is.null(feature_mods)){
           network <- sapply(strsplit(networks[j], "/"), function(x) x[length(x)])
           return(data.frame(Dataset=data_dirs$Title[i], 
-                            Network=network, feature_mods))
+                            Network=network, enrich_out))
         }
       }
       
